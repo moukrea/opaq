@@ -137,8 +137,7 @@ fn write_empty_store(passphrase: &str) -> Result<()> {
     temp.as_file().sync_all()?;
 
     let path = store_path();
-    temp.persist(&path)
-        .map_err(std::io::Error::from)?;
+    temp.persist(&path).map_err(std::io::Error::from)?;
 
     let perms = fs::Permissions::from_mode(0o600);
     fs::set_permissions(&path, perms)?;

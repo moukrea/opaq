@@ -55,9 +55,7 @@ fn prompt_secret_value() -> Result<String> {
         .map_err(|e| OpaqError::Io(std::io::Error::other(e.to_string())))?;
 
     if value != confirm {
-        return Err(OpaqError::Io(std::io::Error::other(
-            "Values do not match.",
-        )));
+        return Err(OpaqError::Io(std::io::Error::other("Values do not match.")));
     }
 
     Ok(value)

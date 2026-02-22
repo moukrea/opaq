@@ -39,11 +39,7 @@ pub fn execute(command: Vec<String>) -> Result<()> {
     // Step 4: Set up file scrubber
     let extra_paths = parse_output_paths(&resolved.args);
     let cwd = std::env::current_dir()?;
-    let mut scrubber = FileScrubber::new(
-        resolved.injected_secrets.clone(),
-        &cwd,
-        extra_paths,
-    )?;
+    let mut scrubber = FileScrubber::new(resolved.injected_secrets.clone(), &cwd, extra_paths)?;
 
     // Step 5: Spawn child process
     let mut child = Command::new(&resolved.args[0])

@@ -29,10 +29,7 @@ fn is_plugin_installed() -> Result<bool> {
 
 /// Get the claude CLI version string, or None if unavailable.
 fn get_claude_version() -> Option<String> {
-    let output = Command::new("claude")
-        .args(["--version"])
-        .output()
-        .ok()?;
+    let output = Command::new("claude").args(["--version"]).output().ok()?;
     if output.status.success() {
         let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
         Some(version)
@@ -133,10 +130,7 @@ pub fn uninstall(_selection: SetupSelection) -> Result<()> {
     }
     println!("Plugin uninstalled");
     println!();
-    println!(
-        "The marketplace ({}) is still registered.",
-        repo
-    );
+    println!("The marketplace ({}) is still registered.", repo);
     println!("You can reinstall anytime with `opaq setup`.");
 
     Ok(())
@@ -151,28 +145,19 @@ pub fn check(_selection: SetupSelection) -> Result<()> {
     // Check 1: opaq initialized
     let store_ok = store_path().exists();
     if store_ok {
-        println!(
-            "opaq initialized (~/.config/opaq/store exists)       [OK]"
-        );
+        println!("opaq initialized (~/.config/opaq/store exists)       [OK]");
     } else {
-        println!(
-            "opaq not initialized                                  [FAIL]"
-        );
+        println!("opaq not initialized                                  [FAIL]");
         all_ok = false;
     }
 
     // Check 2: claude CLI available
     match get_claude_version() {
         Some(version) => {
-            println!(
-                "claude CLI available ({:<36}) [OK]",
-                version
-            );
+            println!("claude CLI available ({:<36}) [OK]", version);
         }
         None => {
-            println!(
-                "claude CLI not available                               [FAIL]"
-            );
+            println!("claude CLI not available                               [FAIL]");
             all_ok = false;
         }
     }
@@ -180,27 +165,18 @@ pub fn check(_selection: SetupSelection) -> Result<()> {
     // Check 3: Marketplace registered
     let marketplace_ok = is_marketplace_registered().unwrap_or(false);
     if marketplace_ok {
-        println!(
-            "Marketplace registered ({:<30}) [OK]",
-            repo
-        );
+        println!("Marketplace registered ({:<30}) [OK]", repo);
     } else {
-        println!(
-            "Marketplace not registered                             [FAIL]"
-        );
+        println!("Marketplace not registered                             [FAIL]");
         all_ok = false;
     }
 
     // Check 4: Plugin installed
     let plugin_ok = is_plugin_installed().unwrap_or(false);
     if plugin_ok {
-        println!(
-            "Plugin installed (opaq)                                [OK]"
-        );
+        println!("Plugin installed (opaq)                                [OK]");
     } else {
-        println!(
-            "Plugin not installed                                   [FAIL]"
-        );
+        println!("Plugin not installed                                   [FAIL]");
         all_ok = false;
     }
 
@@ -216,9 +192,7 @@ pub fn check(_selection: SetupSelection) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::commands::setup::{
-        AgentSystem, InstallScope, SetupMode, SetupSelection,
-    };
+    use crate::commands::setup::{AgentSystem, InstallScope, SetupMode, SetupSelection};
 
     #[test]
     fn install_selection_requires_scope() {

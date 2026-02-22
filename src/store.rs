@@ -24,7 +24,12 @@ pub fn store_dir() -> PathBuf {
         return PathBuf::from(dir);
     }
     dirs::config_dir()
-        .unwrap_or_else(|| PathBuf::from(format!("{}/.config", std::env::var("HOME").unwrap_or_else(|_| String::from("~")))))
+        .unwrap_or_else(|| {
+            PathBuf::from(format!(
+                "{}/.config",
+                std::env::var("HOME").unwrap_or_else(|_| String::from("~"))
+            ))
+        })
         .join("opaq")
 }
 
@@ -76,8 +81,7 @@ fn write_store_to(
     temp.as_file().sync_all()?;
 
     // Atomically rename temp file to store path
-    temp.persist(path)
-        .map_err(std::io::Error::from)?;
+    temp.persist(path).map_err(std::io::Error::from)?;
 
     // Set permissions to 0600
     let perms = fs::Permissions::from_mode(0o600);

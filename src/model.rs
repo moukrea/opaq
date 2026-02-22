@@ -113,11 +113,7 @@ mod tests {
 
     #[test]
     fn tag_normalization_case() {
-        let tags = vec![
-            "CI".to_string(),
-            "Api".to_string(),
-            "REGISTRY".to_string(),
-        ];
+        let tags = vec!["CI".to_string(), "Api".to_string(), "REGISTRY".to_string()];
         assert_eq!(normalize_tags(&tags), vec!["api", "ci", "registry"]);
     }
 
@@ -139,11 +135,7 @@ mod tests {
 
     #[test]
     fn tag_normalization_empty_filtered() {
-        let tags = vec![
-            "".to_string(),
-            "  ".to_string(),
-            "valid".to_string(),
-        ];
+        let tags = vec!["".to_string(), "  ".to_string(), "valid".to_string()];
         assert_eq!(normalize_tags(&tags), vec!["valid"]);
     }
 
@@ -163,12 +155,7 @@ mod tests {
 
     #[test]
     fn secret_entry_new_invalid_name() {
-        let result = SecretEntry::new(
-            "invalid".to_string(),
-            "desc".to_string(),
-            vec![],
-            vec![],
-        );
+        let result = SecretEntry::new("invalid".to_string(), "desc".to_string(), vec![], vec![]);
         assert!(result.is_err());
     }
 }

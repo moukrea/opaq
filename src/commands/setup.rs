@@ -51,9 +51,8 @@ fn check_initialized() -> Result<()> {
 
     // Check keychain entry is valid (retrievable)
     let kc = keychain::get_keychain();
-    kc.retrieve_key().map_err(|_| {
-        OpaqError::CommandExecution("Run `opaq init` first.".to_string())
-    })?;
+    kc.retrieve_key()
+        .map_err(|_| OpaqError::CommandExecution("Run `opaq init` first.".to_string()))?;
 
     Ok(())
 }

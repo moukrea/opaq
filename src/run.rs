@@ -18,7 +18,10 @@ pub fn resolve_placeholders(args: &[String], store: &[SecretEntry]) -> ResolvedC
     let re = Regex::new(r"\{\{([A-Z][A-Z0-9_]*)\}\}").expect("placeholder regex is valid");
 
     // Build a lookup map: name -> value
-    let lookup: HashMap<&str, &[u8]> = store.iter().map(|e| (e.name.as_str(), e.value.as_slice())).collect();
+    let lookup: HashMap<&str, &[u8]> = store
+        .iter()
+        .map(|e| (e.name.as_str(), e.value.as_slice()))
+        .collect();
 
     let mut seen_secrets: HashSet<Vec<u8>> = HashSet::new();
     let mut injected_secrets: Vec<Vec<u8>> = Vec::new();
@@ -81,10 +84,7 @@ mod tests {
 
     #[test]
     fn multiple_placeholders_in_one_arg() {
-        let store = vec![
-            make_entry("USER", b"admin"),
-            make_entry("PASS", b"hunter2"),
-        ];
+        let store = vec![make_entry("USER", b"admin"), make_entry("PASS", b"hunter2")];
         let args = vec!["{{USER}}:{{PASS}}".into()];
 
         let result = resolve_placeholders(&args, &store);

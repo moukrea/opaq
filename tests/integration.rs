@@ -97,8 +97,18 @@ fn init_already_initialized_detects_existing_store() {
 #[test]
 fn add_then_search_by_name() {
     let entries = vec![
-        make_entry("SONARQUBE_TOKEN", "API token for SonarQube", &["sonar", "ci"], b"sq_abc123"),
-        make_entry("GITHUB_TOKEN", "GitHub personal access token", &["github"], b"ghp_xyz"),
+        make_entry(
+            "SONARQUBE_TOKEN",
+            "API token for SonarQube",
+            &["sonar", "ci"],
+            b"sq_abc123",
+        ),
+        make_entry(
+            "GITHUB_TOKEN",
+            "GitHub personal access token",
+            &["github"],
+            b"ghp_xyz",
+        ),
     ];
 
     // Encrypt and decrypt round-trip
@@ -135,7 +145,12 @@ fn add_then_search_by_tag() {
 #[test]
 fn add_then_search_by_description() {
     let entries = vec![
-        make_entry("API_KEY", "Key for SonarQube quality gateway", &["ci"], b"key1"),
+        make_entry(
+            "API_KEY",
+            "Key for SonarQube quality gateway",
+            &["ci"],
+            b"key1",
+        ),
         make_entry("DB_PASS", "Database password", &["db"], b"pass1"),
     ];
 
@@ -146,9 +161,12 @@ fn add_then_search_by_description() {
 
 #[test]
 fn search_no_results_returns_empty() {
-    let entries = vec![
-        make_entry("GITHUB_TOKEN", "GitHub access token", &["github"], b"ghp_abc"),
-    ];
+    let entries = vec![make_entry(
+        "GITHUB_TOKEN",
+        "GitHub access token",
+        &["github"],
+        b"ghp_abc",
+    )];
 
     let results = fuzzy_search("kubernetes", &entries);
     assert!(results.is_empty());
@@ -162,8 +180,18 @@ fn search_no_results_returns_empty() {
 fn run_placeholder_resolution_full_workflow() {
     // Simulate the full init -> add -> run workflow
     let entries = vec![
-        make_entry("API_TOKEN", "API auth token", &["api"], b"super-secret-value-12345"),
-        make_entry("DB_HOST", "Database host", &["db"], b"db.internal.example.com"),
+        make_entry(
+            "API_TOKEN",
+            "API auth token",
+            &["api"],
+            b"super-secret-value-12345",
+        ),
+        make_entry(
+            "DB_HOST",
+            "Database host",
+            &["db"],
+            b"db.internal.example.com",
+        ),
     ];
 
     // Encrypt, persist, read back (full round-trip)
@@ -185,7 +213,10 @@ fn run_placeholder_resolution_full_workflow() {
 
     assert_eq!(resolved.args[0], "curl");
     assert_eq!(resolved.args[1], "-H");
-    assert_eq!(resolved.args[2], "Authorization: Bearer super-secret-value-12345");
+    assert_eq!(
+        resolved.args[2],
+        "Authorization: Bearer super-secret-value-12345"
+    );
     assert_eq!(resolved.args[3], "https://db.internal.example.com/api/v1");
     assert_eq!(resolved.injected_secrets.len(), 2);
 }
@@ -203,7 +234,10 @@ fn run_output_filter_masks_secret_values() {
     filter.filter_stream(&mut input, &mut output).unwrap();
 
     let output_str = String::from_utf8(output).unwrap();
-    assert!(output_str.contains("[MASKED]"), "Output should contain [MASKED]");
+    assert!(
+        output_str.contains("[MASKED]"),
+        "Output should contain [MASKED]"
+    );
     assert!(
         !output_str.contains("super-secret-value-12345"),
         "Output must NOT contain raw secret value"
@@ -244,9 +278,7 @@ fn run_output_filter_masks_multiple_secrets() {
 
 #[test]
 fn run_unknown_placeholder_left_asis() {
-    let entries = vec![
-        make_entry("KNOWN", "Known secret", &[], b"value"),
-    ];
+    let entries = vec![make_entry("KNOWN", "Known secret", &[], b"value")];
 
     let args: Vec<String> = vec!["echo".into(), "{{KNOWN}} and {{UNKNOWN}}".into()];
     let resolved = resolve_placeholders(&args, &entries);
@@ -257,9 +289,7 @@ fn run_unknown_placeholder_left_asis() {
 
 #[test]
 fn run_non_opaq_curly_patterns_pass_through() {
-    let entries = vec![
-        make_entry("TOKEN", "A token", &[], b"val"),
-    ];
+    let entries = vec![make_entry("TOKEN", "A token", &[], b"val")];
 
     let args: Vec<String> = vec![
         "helm".into(),
@@ -394,9 +424,7 @@ fn export_import_roundtrip() {
 
 #[test]
 fn export_import_wrong_passphrase_fails() {
-    let entries = vec![
-        make_entry("TOKEN", "A token", &[], b"secret_value"),
-    ];
+    let entries = vec![make_entry("TOKEN", "A token", &[], b"secret_value")];
 
     let plaintext = serialize_store(&entries).unwrap();
     let encrypted = encrypt_blob(&plaintext, "correct-export-pass").unwrap();
@@ -423,12 +451,18 @@ fn export_empty_store_roundtrip() {
 #[test]
 fn import_merge_new_entries_preserves_existing() {
     // Simulate merging: local store has SECRET_A, import has SECRET_B
-    let local = vec![
-        make_entry("SECRET_A", "Local secret", &["local"], b"local_value"),
-    ];
-    let imported = vec![
-        make_entry("SECRET_B", "Imported secret", &["imported"], b"imported_value"),
-    ];
+    let local = vec![make_entry(
+        "SECRET_A",
+        "Local secret",
+        &["local"],
+        b"local_value",
+    )];
+    let imported = vec![make_entry(
+        "SECRET_B",
+        "Imported secret",
+        &["imported"],
+        b"imported_value",
+    )];
 
     // Merge logic (mirroring import_cmd.rs)
     let mut merged = local.clone();
@@ -453,9 +487,12 @@ fn import_merge_new_entries_preserves_existing() {
 
 #[test]
 fn import_overwrite_replaces_existing() {
-    let mut local = [
-        make_entry("TOKEN", "Old description", &["old"], b"old_value"),
-    ];
+    let mut local = [make_entry(
+        "TOKEN",
+        "Old description",
+        &["old"],
+        b"old_value",
+    )];
     let imported = make_entry("TOKEN", "New description", &["new"], b"new_value");
 
     // Overwrite
@@ -508,7 +545,10 @@ fn full_workflow_init_add_search_run() {
     let results = fuzzy_search("sonar", &entries);
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].name, "SONARQUBE_TOKEN");
-    assert_eq!(results[0].description, "SonarQube API token for CI pipeline");
+    assert_eq!(
+        results[0].description,
+        "SonarQube API token for CI pipeline"
+    );
 
     let results = fuzzy_search("docker", &entries);
     assert!(!results.is_empty());
@@ -645,9 +685,12 @@ fn parse_output_paths_integration() {
 #[test]
 fn encryption_roundtrip_with_binary_secret_values() {
     // Secrets can be arbitrary bytes, not just UTF-8
-    let entries = vec![
-        make_entry("BINARY_KEY", "Binary API key", &["binary"], &[0xFF, 0xFE, 0x00, 0x01, 0x80]),
-    ];
+    let entries = vec![make_entry(
+        "BINARY_KEY",
+        "Binary API key",
+        &["binary"],
+        &[0xFF, 0xFE, 0x00, 0x01, 0x80],
+    )];
 
     let passphrase = "test-pass";
     let plaintext = serialize_store(&entries).unwrap();
@@ -770,8 +813,7 @@ mod binary_tests {
             entries.push(entry);
 
             let new_plaintext = opaq::store::serialize_store(&entries).unwrap();
-            let new_ciphertext =
-                opaq::crypto::encrypt_blob(&new_plaintext, &passphrase).unwrap();
+            let new_ciphertext = opaq::crypto::encrypt_blob(&new_plaintext, &passphrase).unwrap();
             fs::write(&store_path, &new_ciphertext).unwrap();
             fs::set_permissions(&store_path, fs::Permissions::from_mode(0o600)).unwrap();
         }
@@ -866,11 +908,7 @@ mod binary_tests {
         let env = TestEnv::new();
         env.init_store();
 
-        let output = env
-            .cmd()
-            .args(["search", "nonexistent"])
-            .output()
-            .unwrap();
+        let output = env.cmd().args(["search", "nonexistent"]).output().unwrap();
 
         assert!(output.status.success());
 
@@ -942,11 +980,7 @@ mod binary_tests {
         let env = TestEnv::new();
         env.init_store();
 
-        let output = env
-            .cmd()
-            .args(["run", "--", "true"])
-            .output()
-            .unwrap();
+        let output = env.cmd().args(["run", "--", "true"]).output().unwrap();
 
         assert!(output.status.success(), "Run with 'true' should exit 0");
     }
@@ -1034,7 +1068,10 @@ mod binary_tests {
         let output = env
             .cmd()
             .args([
-                "run", "--", "sh", "-c",
+                "run",
+                "--",
+                "sh",
+                "-c",
                 "echo {{TOKEN_ONE}} and {{TOKEN_TWO}}",
             ])
             .output()
@@ -1084,10 +1121,8 @@ mod binary_tests {
 
             let store_path = env1.store_dir.join("store");
             let ciphertext = std::fs::read(&store_path).unwrap();
-            let plaintext =
-                opaq::crypto::decrypt_blob(&ciphertext, &master_passphrase).unwrap();
-            let export_encrypted =
-                opaq::crypto::encrypt_blob(&plaintext, export_pass).unwrap();
+            let plaintext = opaq::crypto::decrypt_blob(&ciphertext, &master_passphrase).unwrap();
+            let export_encrypted = opaq::crypto::encrypt_blob(&plaintext, export_pass).unwrap();
             std::fs::write(&export_file, &export_encrypted).unwrap();
         }
 

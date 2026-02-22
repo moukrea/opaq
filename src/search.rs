@@ -120,9 +120,11 @@ mod tests {
 
     #[test]
     fn no_match_returns_empty() {
-        let entries = vec![
-            make_entry("GITHUB_TOKEN", "GitHub access token", &["github"]),
-        ];
+        let entries = vec![make_entry(
+            "GITHUB_TOKEN",
+            "GitHub access token",
+            &["github"],
+        )];
 
         let results = fuzzy_search("kubernetes", &entries);
         assert!(results.is_empty());
@@ -132,7 +134,11 @@ mod tests {
     fn results_sorted_by_score() {
         let entries = vec![
             make_entry("DB_PASSWORD", "Database password", &["db"]),
-            make_entry("SONARQUBE_TOKEN", "API token for SonarQube", &["sonar", "sonarqube"]),
+            make_entry(
+                "SONARQUBE_TOKEN",
+                "API token for SonarQube",
+                &["sonar", "sonarqube"],
+            ),
             make_entry("SONAR_URL", "SonarQube URL", &["sonar"]),
         ];
 

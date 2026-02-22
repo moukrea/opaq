@@ -220,11 +220,7 @@ mod tests {
 
     #[test]
     fn multiple_secrets() {
-        let filter = OutputFilter::new(&[
-            b"secret-one".to_vec(),
-            b"secret-two".to_vec(),
-        ])
-        .unwrap();
+        let filter = OutputFilter::new(&[b"secret-one".to_vec(), b"secret-two".to_vec()]).unwrap();
         let input_data = b"first: secret-one, second: secret-two";
         let mut input = Cursor::new(input_data);
         let mut output = Vec::new();
@@ -242,10 +238,7 @@ mod tests {
         let mut input = Cursor::new(input_data);
         let mut output = Vec::new();
         filter.filter_stream(&mut input, &mut output).unwrap();
-        assert_eq!(
-            String::from_utf8(output).unwrap(),
-            "url=[MASKED]&other=val"
-        );
+        assert_eq!(String::from_utf8(output).unwrap(), "url=[MASKED]&other=val");
     }
 
     #[test]
@@ -270,10 +263,7 @@ mod tests {
         let mut input = Cursor::new(input_data.as_bytes());
         let mut output = Vec::new();
         filter.filter_stream(&mut input, &mut output).unwrap();
-        assert_eq!(
-            String::from_utf8(output).unwrap(),
-            "token=[MASKED]"
-        );
+        assert_eq!(String::from_utf8(output).unwrap(), "token=[MASKED]");
     }
 
     #[test]
@@ -314,7 +304,9 @@ mod tests {
                 if self.pos >= self.data.len() {
                     return Ok(0);
                 }
-                let end = (self.pos + self.chunk_size).min(self.data.len()).min(self.pos + buf.len());
+                let end = (self.pos + self.chunk_size)
+                    .min(self.data.len())
+                    .min(self.pos + buf.len());
                 let n = end - self.pos;
                 buf[..n].copy_from_slice(&self.data[self.pos..end]);
                 self.pos += n;
@@ -330,10 +322,7 @@ mod tests {
         };
         let mut output = Vec::new();
         filter.filter_stream(&mut reader, &mut output).unwrap();
-        assert_eq!(
-            String::from_utf8(output).unwrap(),
-            "prefix [MASKED] suffix"
-        );
+        assert_eq!(String::from_utf8(output).unwrap(), "prefix [MASKED] suffix");
     }
 
     #[test]
@@ -366,10 +355,7 @@ mod tests {
         let mut input = Cursor::new(input_data);
         let mut output = Vec::new();
         filter.filter_stream(&mut input, &mut output).unwrap();
-        assert_eq!(
-            String::from_utf8(output).unwrap(),
-            "Got [MASKED] in output"
-        );
+        assert_eq!(String::from_utf8(output).unwrap(), "Got [MASKED] in output");
     }
 
     #[test]

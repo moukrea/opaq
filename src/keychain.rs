@@ -78,9 +78,9 @@ mod linux {
                     let secret = item
                         .get_secret()
                         .map_err(|e| OpaqError::KeychainError(e.to_string()))?;
-                    let key: [u8; 32] = secret
-                        .try_into()
-                        .map_err(|_| OpaqError::KeychainError("Invalid key length in keychain".into()))?;
+                    let key: [u8; 32] = secret.try_into().map_err(|_| {
+                        OpaqError::KeychainError("Invalid key length in keychain".into())
+                    })?;
                     Ok(key)
                 }
                 None => Err(OpaqError::StoreLocked),
@@ -135,9 +135,9 @@ mod macos {
         fn retrieve_key(&self) -> crate::error::Result<[u8; 32]> {
             match get_generic_password("opaq", "master-key") {
                 Ok(data) => {
-                    let key: [u8; 32] = data
-                        .try_into()
-                        .map_err(|_| OpaqError::KeychainError("Invalid key length in keychain".into()))?;
+                    let key: [u8; 32] = data.try_into().map_err(|_| {
+                        OpaqError::KeychainError("Invalid key length in keychain".into())
+                    })?;
                     Ok(key)
                 }
                 Err(e) if e.code() == -25300 => Err(OpaqError::StoreLocked),
@@ -175,9 +175,9 @@ impl Keychain for FileKeychain {
                 crate::error::OpaqError::Io(e)
             }
         })?;
-        let key: [u8; 32] = data
-            .try_into()
-            .map_err(|_| crate::error::OpaqError::KeychainError("Invalid key length in file keychain".into()))?;
+        let key: [u8; 32] = data.try_into().map_err(|_| {
+            crate::error::OpaqError::KeychainError("Invalid key length in file keychain".into())
+        })?;
         Ok(key)
     }
 

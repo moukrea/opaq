@@ -57,8 +57,8 @@ pub fn execute(file: String) -> Result<()> {
 mod tests {
     use super::*;
     use crate::crypto::encrypt_blob;
-    use crate::store::serialize_store;
     use crate::model::SecretEntry;
+    use crate::store::serialize_store;
 
     #[test]
     fn round_trip_export_decrypt() {

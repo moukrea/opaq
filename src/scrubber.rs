@@ -106,10 +106,7 @@ impl FileScrubber {
                     );
                 }
                 Err(_) => {
-                    eprintln!(
-                        "\u{26A0} Could not scrub {}: read error",
-                        path.display()
-                    );
+                    eprintln!("\u{26A0} Could not scrub {}: read error", path.display());
                 }
             }
         }
@@ -341,17 +338,18 @@ mod tests {
         };
 
         scrubber.scrub_binary(&file_path).unwrap();
-        assert!(file_path.exists(), "Binary file without matches should be preserved");
+        assert!(
+            file_path.exists(),
+            "Binary file without matches should be preserved"
+        );
     }
 
     #[test]
     fn parse_output_paths_basic() {
-        let args: Vec<String> = vec![
-            "curl", "-o", "output.json", "https://example.com",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect();
+        let args: Vec<String> = vec!["curl", "-o", "output.json", "https://example.com"]
+            .into_iter()
+            .map(String::from)
+            .collect();
 
         let paths = parse_output_paths(&args);
         assert_eq!(paths, vec![PathBuf::from("output.json")]);
@@ -359,12 +357,10 @@ mod tests {
 
     #[test]
     fn parse_output_paths_equals() {
-        let args: Vec<String> = vec![
-            "curl", "--output=response.json", "https://example.com",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect();
+        let args: Vec<String> = vec!["curl", "--output=response.json", "https://example.com"]
+            .into_iter()
+            .map(String::from)
+            .collect();
 
         let paths = parse_output_paths(&args);
         assert_eq!(paths, vec![PathBuf::from("response.json")]);
@@ -372,12 +368,10 @@ mod tests {
 
     #[test]
     fn parse_output_paths_redirect() {
-        let args: Vec<String> = vec![
-            "echo", "hello", ">", "out.txt",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect();
+        let args: Vec<String> = vec!["echo", "hello", ">", "out.txt"]
+            .into_iter()
+            .map(String::from)
+            .collect();
 
         let paths = parse_output_paths(&args);
         assert_eq!(paths, vec![PathBuf::from("out.txt")]);
@@ -385,12 +379,10 @@ mod tests {
 
     #[test]
     fn parse_output_paths_append_redirect() {
-        let args: Vec<String> = vec![
-            "echo", "hello", ">>", "log.txt",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect();
+        let args: Vec<String> = vec!["echo", "hello", ">>", "log.txt"]
+            .into_iter()
+            .map(String::from)
+            .collect();
 
         let paths = parse_output_paths(&args);
         assert_eq!(paths, vec![PathBuf::from("log.txt")]);
@@ -398,12 +390,10 @@ mod tests {
 
     #[test]
     fn parse_output_paths_short_equals() {
-        let args: Vec<String> = vec![
-            "curl", "-o=data.json", "https://example.com",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect();
+        let args: Vec<String> = vec!["curl", "-o=data.json", "https://example.com"]
+            .into_iter()
+            .map(String::from)
+            .collect();
 
         let paths = parse_output_paths(&args);
         assert_eq!(paths, vec![PathBuf::from("data.json")]);
@@ -411,12 +401,10 @@ mod tests {
 
     #[test]
     fn parse_output_paths_none() {
-        let args: Vec<String> = vec![
-            "curl", "https://example.com",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect();
+        let args: Vec<String> = vec!["curl", "https://example.com"]
+            .into_iter()
+            .map(String::from)
+            .collect();
 
         let paths = parse_output_paths(&args);
         assert!(paths.is_empty());

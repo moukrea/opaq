@@ -70,8 +70,7 @@ pub fn execute(file: String, overwrite: bool) -> Result<()> {
                 local_entries[idx] = imported;
                 overwrite_count += 1;
             } else {
-                let prompt =
-                    format!("{} already exists. Overwrite? [y/N/a(ll)]:", imported.name);
+                let prompt = format!("{} already exists. Overwrite? [y/N/a(ll)]:", imported.name);
                 let answer = Text::new(&prompt)
                     .with_default("N")
                     .prompt()
@@ -115,8 +114,7 @@ pub fn execute(file: String, overwrite: bool) -> Result<()> {
     let mut temp = tempfile::NamedTempFile::new_in(&dir)?;
     temp.write_all(&ciphertext)?;
     temp.as_file().sync_all()?;
-    temp.persist(&store_file)
-        .map_err(std::io::Error::from)?;
+    temp.persist(&store_file).map_err(std::io::Error::from)?;
 
     let perms = fs::Permissions::from_mode(0o600);
     fs::set_permissions(&store_file, perms)?;

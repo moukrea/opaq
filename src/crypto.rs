@@ -54,10 +54,7 @@ pub fn decrypt_blob(ciphertext: &[u8], passphrase: &str) -> crate::error::Result
     }
 }
 
-pub fn derive_key_from_passphrase(
-    passphrase: &str,
-    salt: &[u8],
-) -> crate::error::Result<[u8; 32]> {
+pub fn derive_key_from_passphrase(passphrase: &str, salt: &[u8]) -> crate::error::Result<[u8; 32]> {
     let mut output = [0u8; 32];
     let argon2 = argon2::Argon2::default();
     argon2

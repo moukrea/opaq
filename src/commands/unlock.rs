@@ -41,15 +41,15 @@ fn unlock_passphrase_mode(meta_path: &std::path::Path) -> Result<()> {
 
     // Read stored metadata
     let meta_content = std::fs::read_to_string(meta_path)?;
-    let meta: serde_json::Value = serde_json::from_str(&meta_content)
-        .map_err(|e| OpaqError::Serialization(e.to_string()))?;
+    let meta: serde_json::Value =
+        serde_json::from_str(&meta_content).map_err(|e| OpaqError::Serialization(e.to_string()))?;
 
     let salt_b64 = meta["salt"]
         .as_str()
         .ok_or_else(|| OpaqError::Serialization("Missing salt in metadata".to_string()))?;
-    let stored_hash_b64 = meta["verification_hash"]
-        .as_str()
-        .ok_or_else(|| OpaqError::Serialization("Missing verification_hash in metadata".to_string()))?;
+    let stored_hash_b64 = meta["verification_hash"].as_str().ok_or_else(|| {
+        OpaqError::Serialization("Missing verification_hash in metadata".to_string())
+    })?;
 
     let salt = base64::engine::general_purpose::STANDARD
         .decode(salt_b64)

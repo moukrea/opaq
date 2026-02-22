@@ -47,11 +47,10 @@ pub fn execute(
 
         match selection {
             "Edit description" => {
-                let new_desc =
-                    inquire::Text::new("  Description:")
-                        .with_default(&entry.description)
-                        .prompt()
-                        .map_err(|e| OpaqError::Io(std::io::Error::other(e.to_string())))?;
+                let new_desc = inquire::Text::new("  Description:")
+                    .with_default(&entry.description)
+                    .prompt()
+                    .map_err(|e| OpaqError::Io(std::io::Error::other(e.to_string())))?;
                 entry.description = new_desc;
             }
             "Edit tags" => {
@@ -95,9 +94,7 @@ fn prompt_secret_value() -> Result<String> {
         .map_err(|e| OpaqError::Io(std::io::Error::other(e.to_string())))?;
 
     if value != confirm {
-        return Err(OpaqError::Io(std::io::Error::other(
-            "Values do not match.",
-        )));
+        return Err(OpaqError::Io(std::io::Error::other("Values do not match.")));
     }
 
     Ok(value)
