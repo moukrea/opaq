@@ -1,0 +1,44 @@
+[package]
+name = "opaq"
+version = "0.1.0"
+edition = "2021"
+description = "Credential manager that keeps secrets out of terminals, agent context windows, shell histories, and command output"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+inquire = "0.7"
+age = { version = "0.10", features = ["armor"] }
+argon2 = "0.5"
+aho-corasick = "1"
+nucleo = "0.5"
+nucleo-matcher = "0.3"
+notify = "7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bincode = "1"
+base64 = "0.22"
+urlencoding = "2"
+nix = { version = "0.29", features = ["term", "fs"] }
+tempfile = "3"
+owo-colors = "4"
+thiserror = "2"
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"
+dirs = "5"
+regex = "1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+secret-service = { version = "4", features = ["rt-async-io-crypto-rust"], optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = { version = "3", optional = true }
+
+[features]
+default = []
+linux-keychain = ["secret-service"]
+macos-keychain = ["security-framework"]
+
+[profile.release]
+strip = true
+lto = true
+opt-level = "z"
