@@ -1,0 +1,87 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      upload-artifacts:
+        type: boolean
+        default: false
+      create-archives:
+        type: boolean
+        default: false
+      ref-name:
+        type: string
+        default: ''
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            features: linux-keychain
+            cross: false
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            features: linux-keychain
+            cross: true
+          - target: x86_64-apple-darwin
+            os: macos-13
+            features: macos-keychain
+            cross: false
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            features: macos-keychain
+            cross: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cross-compilation packages
+        if: matrix.cross
+        run: |
+          sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }} --features ${{ matrix.features }}
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.cross && 'aarch64-linux-gnu-gcc' || '' }}
+
+      - name: Verify binary
+        run: test -f target/${{ matrix.target }}/release/opaq
+
+      - name: Create archive
+        if: inputs.create-archives
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/opaq dist/
+          cd dist && tar czf opaq-${{ inputs.ref-name }}-${{ matrix.target }}.tar.gz opaq
+
+      - name: Generate checksum
+        if: inputs.create-archives
+        run: |
+          cd dist && sha256sum opaq-${{ inputs.ref-name }}-${{ matrix.target }}.tar.gz > opaq-${{ inputs.ref-name }}-${{ matrix.target }}.tar.gz.sha256
+
+      - name: Upload artifact
+        if: inputs.upload-artifacts && !inputs.create-archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: opaq-${{ matrix.target }}
+          path: |
+            target/${{ matrix.target }}/release/opaq
+
+      - name: Upload release artifact
+        if: inputs.upload-artifacts && inputs.create-archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: opaq-${{ matrix.target }}
+          path: |
+            dist/opaq-${{ inputs.ref-name }}-${{ matrix.target }}.tar.gz
+            dist/opaq-${{ inputs.ref-name }}-${{ matrix.target }}.tar.gz.sha256
