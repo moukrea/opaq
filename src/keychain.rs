@@ -199,7 +199,7 @@ pub fn get_keychain() -> Box<dyn Keychain> {
 
     #[cfg(all(target_os = "linux", feature = "linux-keychain"))]
     {
-        return Box::new(linux::LinuxKeychain);
+        Box::new(linux::LinuxKeychain)
     }
 
     #[cfg(all(target_os = "macos", feature = "macos-keychain"))]
