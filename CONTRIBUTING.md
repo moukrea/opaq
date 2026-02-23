@@ -143,8 +143,6 @@ docs(readme): add installation instructions
 
 ## Architecture Notes
 
-The `spec/` directory at the workspace root contains the full system specification, organized into per-subsystem documents. Consult the relevant spec file when working on any subsystem.
-
 Key design constraints:
 
 - **No code path may output raw secret values.** The output filter and file scrubber are safety nets, not primary controls.
