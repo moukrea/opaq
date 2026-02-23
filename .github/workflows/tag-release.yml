@@ -3,7 +3,7 @@ name: Tag Release
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: write
@@ -36,9 +36,166 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           CHANGELOG=$(git tag -l --format='%(contents)' ${{ github.ref_name }})
-          find artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' \) -exec mv {} artifacts/ \;
+          find artifacts -type f \( -name '*.tar.gz' -o -name '*.sha256' -o -name '*.deb' -o -name '*.rpm' \) -exec mv {} artifacts/ \;
           gh release create "${{ github.ref_name }}" \
-            --title "${{ github.ref_name }}" \
+            --title "opaq ${{ github.ref_name }}" \
             --notes "$CHANGELOG" \
             artifacts/*.tar.gz \
-            artifacts/*.sha256
+            artifacts/*.sha256 \
+            artifacts/*.deb \
+            artifacts/*.rpm
+
+      - name: Update Homebrew formula
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+
+          # Compute SHA256 for each tarball
+          SHA_LINUX_X86=$(sha256sum artifacts/opaq-${VERSION}-linux-x86_64.tar.gz | cut -d' ' -f1)
+          SHA_LINUX_ARM=$(sha256sum artifacts/opaq-${VERSION}-linux-aarch64.tar.gz | cut -d' ' -f1)
+          SHA_MACOS_X86=$(sha256sum artifacts/opaq-${VERSION}-macos-x86_64.tar.gz | cut -d' ' -f1)
+          SHA_MACOS_ARM=$(sha256sum artifacts/opaq-${VERSION}-macos-aarch64.tar.gz | cut -d' ' -f1)
+
+          # Clone tap repo
+          git clone https://x-access-token:${GH_TOKEN}@github.com/moukrea/homebrew-tap.git tap
+          cd tap
+
+          # Generate formula
+          cat > Formula/opaq.rb << FORMULA
+          class Opaq < Formula
+            desc "Credential manager that keeps secrets out of terminals, agent context windows, shell histories, and command output"
+            homepage "https://github.com/moukrea/opaq"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              on_intel do
+                url "https://github.com/moukrea/opaq/releases/download/${VERSION}/opaq-${VERSION}-macos-x86_64.tar.gz"
+                sha256 "${SHA_MACOS_X86}"
+              end
+              on_arm do
+                url "https://github.com/moukrea/opaq/releases/download/${VERSION}/opaq-${VERSION}-macos-aarch64.tar.gz"
+                sha256 "${SHA_MACOS_ARM}"
+              end
+            end
+
+            on_linux do
+              on_intel do
+                url "https://github.com/moukrea/opaq/releases/download/${VERSION}/opaq-${VERSION}-linux-x86_64.tar.gz"
+                sha256 "${SHA_LINUX_X86}"
+              end
+              on_arm do
+                url "https://github.com/moukrea/opaq/releases/download/${VERSION}/opaq-${VERSION}-linux-aarch64.tar.gz"
+                sha256 "${SHA_LINUX_ARM}"
+              end
+            end
+
+            def install
+              bin.install "opaq"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/opaq --version")
+            end
+          end
+          FORMULA
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/opaq.rb
+          git commit -m "opaq ${VERSION}"
+          git push origin main
+
+      - name: Update APT repository
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+
+          # Import GPG key
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+
+          # Clone APT repo
+          git clone https://x-access-token:${GH_TOKEN}@github.com/moukrea/apt-repo.git apt-repo
+          cd apt-repo
+
+          # Copy .deb files
+          mkdir -p pool/main/o/opaq
+          cp ../artifacts/opaq-${VERSION}-linux-x86_64.deb pool/main/o/opaq/
+          cp ../artifacts/opaq-${VERSION}-linux-aarch64.deb pool/main/o/opaq/
+
+          # Generate package indices
+          mkdir -p dists/stable/main/binary-amd64
+          mkdir -p dists/stable/main/binary-arm64
+          dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
+          gzip -k -f dists/stable/main/binary-amd64/Packages
+          dpkg-scanpackages --arch arm64 pool/ > dists/stable/main/binary-arm64/Packages
+          gzip -k -f dists/stable/main/binary-arm64/Packages
+
+          # Generate Release files
+          apt-ftparchive release dists/stable/ > dists/stable/Release
+          gpg --default-key "$GPG_KEY_ID" -abs -o dists/stable/Release.gpg dists/stable/Release
+          gpg --default-key "$GPG_KEY_ID" --clearsign -o dists/stable/InRelease dists/stable/Release
+
+          # Commit and push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "opaq ${VERSION}"
+          git push origin main
+
+      - name: Update RPM repository
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+
+          # Import GPG key (may already be imported from APT step)
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>/dev/null || true
+
+          # Install createrepo
+          sudo apt-get update && sudo apt-get install -y createrepo-c
+
+          # Clone RPM repo
+          git clone https://x-access-token:${GH_TOKEN}@github.com/moukrea/rpm-repo.git rpm-repo
+          cd rpm-repo
+
+          # Copy .rpm files
+          mkdir -p x86_64 aarch64
+          cp ../artifacts/opaq-${VERSION}-linux-x86_64.rpm x86_64/
+          cp ../artifacts/opaq-${VERSION}-linux-aarch64.rpm aarch64/
+
+          # Generate repo metadata
+          createrepo_c --update .
+          gpg --default-key "$GPG_KEY_ID" --detach-sign --armor repodata/repomd.xml
+
+          # Commit and push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "opaq ${VERSION}"
+          git push origin main
+
+      - name: Generate Arch PKGBUILD
+        run: |
+          VERSION="${{ github.ref_name }}"
+
+          SHA_X86=$(sha256sum artifacts/opaq-${VERSION}-linux-x86_64.tar.gz | cut -d' ' -f1)
+          SHA_ARM=$(sha256sum artifacts/opaq-${VERSION}-linux-aarch64.tar.gz | cut -d' ' -f1)
+
+          mkdir -p artifacts/arch
+          sed -e "s/VERSION_PLACEHOLDER/${VERSION}/g" \
+              -e "s/SHA256_X86_64_PLACEHOLDER/${SHA_X86}/g" \
+              -e "s/SHA256_AARCH64_PLACEHOLDER/${SHA_ARM}/g" \
+              packaging/arch/PKGBUILD > artifacts/arch/PKGBUILD
+
+          # Upload PKGBUILD to the release
+          gh release upload "${VERSION}" artifacts/arch/PKGBUILD \
+            --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

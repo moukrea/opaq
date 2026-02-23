@@ -77,18 +77,16 @@ jobs:
           # Get current version from Cargo.toml
           CURRENT_VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
 
-          # Determine next version
+          # Determine next version (bare semver, no v prefix)
           BUMPED_VERSION=$(git-cliff --bumped-version)
 
           # Exit early if no bump needed
-          if [ "$BUMPED_VERSION" = "v$CURRENT_VERSION" ]; then
+          if [ "$BUMPED_VERSION" = "$CURRENT_VERSION" ]; then
             echo "No version-bumping commits found, skipping"
             exit 0
           fi
 
-          # Extract bare version (strip v prefix)
-          NEW_VERSION=${BUMPED_VERSION#v}
-
+          NEW_VERSION="$BUMPED_VERSION"
           echo "Bumping version: $CURRENT_VERSION -> $NEW_VERSION"
 
           # Update Cargo.toml
@@ -103,11 +101,11 @@ jobs:
           # Stage changes
           git add Cargo.toml Cargo.lock
 
-          # Commit
-          git commit -m "chore(release): bump version to v$NEW_VERSION"
+          # Commit (no v prefix)
+          git commit -m "chore(release): bump version to $NEW_VERSION"
 
-          # Create annotated tag with changelog in annotation body
-          git tag -a "v$NEW_VERSION" -m "$CHANGELOG"
+          # Create annotated tag with changelog (no v prefix)
+          git tag -a "$NEW_VERSION" -m "$CHANGELOG"
 
           # Push commit and tag
           git push origin main --tags

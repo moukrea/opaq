@@ -22,18 +22,26 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             features: linux-keychain
+            os_name: linux
+            arch: x86_64
             cross: false
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             features: linux-keychain
+            os_name: linux
+            arch: aarch64
             cross: true
           - target: x86_64-apple-darwin
             os: macos-latest
             features: macos-keychain
+            os_name: macos
+            arch: x86_64
             cross: false
           - target: aarch64-apple-darwin
             os: macos-latest
             features: macos-keychain
+            os_name: macos
+            arch: aarch64
             cross: false
     steps:
       - uses: actions/checkout@v4
@@ -62,12 +70,30 @@ jobs:
         run: |
           mkdir -p dist
           cp target/${{ matrix.target }}/release/opaq dist/
-          cd dist && tar czf opaq-${{ inputs.ref-name }}-${{ matrix.target }}.tar.gz opaq
+          cd dist && tar czf opaq-${{ inputs.ref-name }}-${{ matrix.os_name }}-${{ matrix.arch }}.tar.gz opaq
 
       - name: Generate checksum
         if: inputs.create-archives
         run: |
-          cd dist && sha256sum opaq-${{ inputs.ref-name }}-${{ matrix.target }}.tar.gz > opaq-${{ inputs.ref-name }}-${{ matrix.target }}.tar.gz.sha256
+          cd dist && sha256sum opaq-${{ inputs.ref-name }}-${{ matrix.os_name }}-${{ matrix.arch }}.tar.gz \
+            > opaq-${{ inputs.ref-name }}-${{ matrix.os_name }}-${{ matrix.arch }}.tar.gz.sha256
+
+      - name: Build .deb package
+        if: inputs.create-archives && matrix.os_name == 'linux'
+        run: |
+          cargo install cargo-deb
+          cargo deb --no-build --target ${{ matrix.target }}
+          mkdir -p dist
+          mv target/${{ matrix.target }}/debian/opaq_*.deb \
+            dist/opaq-${{ inputs.ref-name }}-linux-${{ matrix.arch }}.deb
+
+      - name: Build .rpm package
+        if: inputs.create-archives && matrix.os_name == 'linux'
+        run: |
+          cargo install cargo-generate-rpm
+          cargo generate-rpm --target ${{ matrix.target }}
+          mv target/${{ matrix.target }}/generate-rpm/opaq-*.rpm \
+            dist/opaq-${{ inputs.ref-name }}-linux-${{ matrix.arch }}.rpm
 
       - name: Upload artifact
         if: inputs.upload-artifacts && !inputs.create-archives
@@ -83,5 +109,4 @@ jobs:
         with:
           name: opaq-${{ matrix.target }}
           path: |
-            dist/opaq-${{ inputs.ref-name }}-${{ matrix.target }}.tar.gz
-            dist/opaq-${{ inputs.ref-name }}-${{ matrix.target }}.tar.gz.sha256
+            dist/opaq-${{ inputs.ref-name }}-*

@@ -42,3 +42,23 @@ macos-keychain = ["security-framework"]
 strip = true
 lto = true
 opt-level = "z"
+
+[package.metadata.deb]
+maintainer = "moukrea <contact@moukrea.dev>"
+copyright = "2025-2026, moukrea"
+license-file = ["LICENSE", "0"]
+depends = "$auto"
+extended-description = """opaq is a credential manager that keeps secrets out of terminals, \
+agent context windows, shell histories, and command output. It encrypts credentials \
+at rest with age encryption and injects them into commands at runtime via placeholder \
+substitution."""
+section = "utils"
+priority = "optional"
+assets = [
+    ["target/release/opaq", "usr/bin/", "755"],
+]
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/opaq", dest = "/usr/bin/opaq", mode = "755" },
+]
