@@ -149,12 +149,13 @@ jobs:
           # Generate package indices
           mkdir -p dists/stable/main/binary-amd64
           mkdir -p dists/stable/main/binary-arm64
-          dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
+          dpkg-scanpackages pool/ > dists/stable/main/binary-amd64/Packages
           gzip -k -f dists/stable/main/binary-amd64/Packages
-          dpkg-scanpackages --arch arm64 pool/ > dists/stable/main/binary-arm64/Packages
+          cp dists/stable/main/binary-amd64/Packages dists/stable/main/binary-arm64/Packages
           gzip -k -f dists/stable/main/binary-arm64/Packages
 
-          # Generate Release files
+          # Generate Release files (remove old signatures first)
+          rm -f dists/stable/Release.gpg dists/stable/InRelease
           apt-ftparchive release dists/stable/ > dists/stable/Release
           gpg --batch --pinentry-mode loopback --default-key "$GPG_KEY_ID" -abs -o dists/stable/Release.gpg dists/stable/Release
           gpg --batch --pinentry-mode loopback --default-key "$GPG_KEY_ID" --clearsign -o dists/stable/InRelease dists/stable/Release
@@ -191,6 +192,7 @@ jobs:
 
           # Generate repo metadata
           createrepo_c --update .
+          rm -f repodata/repomd.xml.asc
           gpg --batch --pinentry-mode loopback --default-key "$GPG_KEY_ID" --detach-sign --armor repodata/repomd.xml
 
           # Commit and push
