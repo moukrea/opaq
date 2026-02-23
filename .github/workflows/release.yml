@@ -106,7 +106,7 @@ jobs:
           git commit -m "chore(release): bump version to $NEW_VERSION"
 
           # Create annotated tag with changelog (no v prefix)
-          git tag -a "$NEW_VERSION" -m "$CHANGELOG"
+          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION"
 
           # Push commit and tag
           git push origin main --tags

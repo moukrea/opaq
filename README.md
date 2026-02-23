@@ -43,7 +43,73 @@ opaq eliminates these risks with a single workflow: search by name, run with pla
 
 ## Installation
 
-### From source
+### Homebrew (macOS & Linux)
+
+```bash
+brew tap moukrea/tap
+brew install opaq
+```
+
+### Debian / Ubuntu
+
+```bash
+# Add GPG key
+curl -fsSL https://moukrea.github.io/apt-repo/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/moukrea.gpg
+
+# Add repository
+echo "deb [signed-by=/usr/share/keyrings/moukrea.gpg] https://moukrea.github.io/apt-repo stable main" | \
+  sudo tee /etc/apt/sources.list.d/moukrea.list
+
+# Install
+sudo apt update && sudo apt install opaq
+```
+
+### Fedora / RHEL
+
+```bash
+# Add repository
+sudo tee /etc/yum.repos.d/moukrea.repo << 'EOF'
+[moukrea]
+name=moukrea Repository
+baseurl=https://moukrea.github.io/rpm-repo/
+gpgcheck=1
+gpgkey=https://moukrea.github.io/rpm-repo/pubkey.gpg
+enabled=1
+EOF
+
+# Install
+sudo dnf install opaq
+```
+
+### Arch Linux
+
+Download the `PKGBUILD` from the
+[latest release](https://github.com/moukrea/opaq/releases/latest) and build:
+
+```bash
+makepkg -si
+```
+
+### Pre-built Binaries
+
+Download the archive for your platform from the
+[latest release](https://github.com/moukrea/opaq/releases/latest):
+
+| Platform | Architecture | Archive |
+|----------|-------------|---------|
+| Linux | x86_64 | `opaq-<version>-linux-x86_64.tar.gz` |
+| Linux | aarch64 | `opaq-<version>-linux-aarch64.tar.gz` |
+| macOS | x86_64 | `opaq-<version>-macos-x86_64.tar.gz` |
+| macOS | Apple Silicon | `opaq-<version>-macos-aarch64.tar.gz` |
+
+Extract and copy the binary to your `PATH`:
+
+```bash
+tar xzf opaq-<version>-<os>-<arch>.tar.gz
+sudo mv opaq /usr/local/bin/
+```
+
+### From Source
 
 Requires the [Rust toolchain](https://rustup.rs/) (stable).
 
