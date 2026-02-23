@@ -143,7 +143,7 @@ docs(readme): add installation instructions
 
 ## Architecture Notes
 
-The [TECHNICAL-SPEC.md](../TECHNICAL-SPEC.md) at the workspace root contains the full system specification. Consult it when working on any subsystem.
+The `spec/` directory at the workspace root contains the full system specification, organized into per-subsystem documents. Consult the relevant spec file when working on any subsystem.
 
 Key design constraints:
 
