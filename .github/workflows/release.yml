@@ -78,7 +78,8 @@ jobs:
           CURRENT_VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
 
           # Determine next version (bare semver, no v prefix)
-          BUMPED_VERSION=$(git-cliff --bumped-version)
+          BUMPED_VERSION=$(git-cliff --config .github/cliff.toml --bumped-version)
+          BUMPED_VERSION="${BUMPED_VERSION#v}"
 
           # Exit early if no bump needed
           if [ "$BUMPED_VERSION" = "$CURRENT_VERSION" ]; then
