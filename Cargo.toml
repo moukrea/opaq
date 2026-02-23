@@ -1,6 +1,6 @@
 [package]
 name = "opaq"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 description = "Credential manager that keeps secrets out of terminals, agent context windows, shell histories, and command output"
 license = "MIT"
