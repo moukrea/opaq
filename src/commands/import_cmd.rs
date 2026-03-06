@@ -301,9 +301,9 @@ mod tests {
 
         // Merge: same name but different scope should add as new
         let key = (imported.name.clone(), format!("{}", imported.scope));
-        if !key_index.contains_key(&key) {
+        if let std::collections::hash_map::Entry::Vacant(e) = key_index.entry(key) {
             let new_idx = local.len();
-            key_index.insert(key, new_idx);
+            e.insert(new_idx);
             local.push(imported);
         }
 
