@@ -301,7 +301,7 @@ mod tests {
 
         // Merge: same name but different scope should add as new
         let key = (imported.name.clone(), format!("{}", imported.scope));
-        if key_index.get(&key).is_none() {
+        if !key_index.contains_key(&key) {
             let new_idx = local.len();
             key_index.insert(key, new_idx);
             local.push(imported);
@@ -317,7 +317,7 @@ mod tests {
         use std::collections::HashMap;
 
         // Local store has EXISTING [global]
-        let mut local = vec![SecretEntry::new(
+        let mut local = [SecretEntry::new(
             "EXISTING".to_string(),
             "Old".to_string(),
             vec![],
@@ -325,7 +325,8 @@ mod tests {
             true,
             crate::model::Scope::Global,
         )
-        .unwrap()];
+        .unwrap()]
+        .to_vec();
 
         // Imported entry has same name AND same scope
         let imported = SecretEntry::new(
