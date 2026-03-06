@@ -10,6 +10,8 @@
   <a href="#installation">Installation</a> &bull;
   <a href="#quick-start">Quick Start</a> &bull;
   <a href="#commands">Commands</a> &bull;
+  <a href="#sensitivity-levels">Sensitivity Levels</a> &bull;
+  <a href="#location-aware-scopes">Location-Aware Scopes</a> &bull;
   <a href="#how-it-works">How It Works</a> &bull;
   <a href="#ai-agent-integration">AI Agent Integration</a> &bull;
   <a href="CONTRIBUTING.md">Contributing</a>
@@ -19,19 +21,24 @@
 
 ## What is opaq?
 
-opaq is a credential manager and execution wrapper for developers and AI agents. Secrets are stored encrypted, referenced by name, injected at runtime, and scrubbed from all output.
+opaq is a credential and config manager with an execution wrapper for developers and AI agents. Entries are either secrets (encrypted, masked in all output) or plain config values (encrypted at rest, readable via `opaq reveal`). All entries are stored encrypted, referenced by name, and scoped to directories.
 
 ```bash
-# Find a secret by keyword
+# Find entries by keyword
 opaq search gitlab
-#   {{GITLAB_TOKEN}}       GitLab API personal access token
+#   🔒 {{GITLAB_TOKEN}}       GitLab API personal access token   [global]
+#   📋 {{GITLAB_URL}}          GitLab instance URL                [~/work/]
 
-# Use it in a command — the value is injected at runtime, never visible
+# Use a secret in a command — the value is injected at runtime, never visible
 opaq run -- curl -sS -H "Authorization: Bearer {{GITLAB_TOKEN}}" \
   "https://gitlab.example.com/api/v4/projects"
+
+# Read a plain config value directly
+opaq reveal GITLAB_URL
+#   https://gitlab.example.com
 ```
 
-The secret value never appears in your terminal, shell history, log files, or AI agent context. Any accidental output is replaced with `[MASKED]`.
+The secret value never appears in your terminal, shell history, log files, or AI agent context. Any accidental output is replaced with `[MASKED]`. Plain entries are intentionally readable — use them for non-sensitive config like URLs and hostnames.
 
 ### Why opaq?
 
@@ -145,14 +152,21 @@ The binary is at `target/release/opaq`. Copy it somewhere on your `PATH`.
 opaq init
 
 # 2. Add a secret (value is entered interactively, never as an argument)
-opaq add GITHUB_TOKEN "GitHub personal access token" --tags github,ci
+opaq add GITHUB_TOKEN "GitHub personal access token" --tags github,ci --secret
 
-# 3. Search for secrets
+# 3. Add a plain config value
+opaq add GITHUB_ORG "GitHub organization name" --plain
+
+# 4. Search for entries
 opaq search github
-#   {{GITHUB_TOKEN}}    GitHub personal access token
+#   🔒 {{GITHUB_TOKEN}}    GitHub personal access token   [global]
+#   📋 {{GITHUB_ORG}}      GitHub organization name       [global]
 
-# 4. Use in commands
+# 5. Use secrets in commands
 opaq run -- gh api /user -H "Authorization: Bearer {{GITHUB_TOKEN}}"
+
+# 6. Read plain values directly
+opaq reveal GITHUB_ORG
 ```
 
 ## Commands
@@ -162,9 +176,11 @@ opaq run -- gh api /user -H "Authorization: Bearer {{GITHUB_TOKEN}}"
 | Command | Description |
 |---------|-------------|
 | `opaq init` | Create the encrypted store and save the master key in your OS keychain |
-| `opaq add <NAME> <DESC>` | Add a secret (value entered via secure prompt) |
-| `opaq edit <NAME>` | Change a secret's description, tags, or value |
-| `opaq remove <NAME>` | Delete a secret |
+| `opaq add <NAME> <DESC>` | Add an entry with optional `--secret`/`--plain` and `--global`/`--user`/`--current` flags |
+| `opaq edit <NAME>` | Change an entry's description, tags, value, sensitivity, or scope |
+| `opaq remove <NAME>` | Delete an entry (disambiguates when multiple scopes exist) |
+| `opaq shadows <NAME>` | Show all scopes for an entry and which one is active from the current directory |
+| `opaq cleanup` | Find and remove entries scoped to directories that no longer exist |
 | `opaq export --to <FILE>` | Export an encrypted backup |
 | `opaq import --from <FILE>` | Restore from a backup |
 | `opaq lock` | Clear the master key from the keychain |
@@ -174,10 +190,11 @@ opaq run -- gh api /user -H "Authorization: Bearer {{GITHUB_TOKEN}}"
 
 | Command | Description |
 |---------|-------------|
-| `opaq search <QUERY>` | Find secrets by name, tags, or description (never shows values) |
+| `opaq search <QUERY>` | Find entries by name, tags, or description (never shows values). Filters by current directory scope; use `--all-scopes` to show all |
+| `opaq reveal <NAME>` | Read the value of a plain (non-sensitive) entry. Refused for secrets |
 | `opaq run -- <CMD>` | Execute a command with `{{SECRET}}` placeholders injected at runtime |
 
-Secret names are always uppercase with underscores: `API_TOKEN`, `DB_PASSWORD`, `SSH_KEY_PATH`.
+Entry names are always uppercase with underscores: `API_TOKEN`, `DB_PASSWORD`, `SSH_KEY_PATH`.
 
 ### Examples
 
@@ -199,8 +216,88 @@ opaq run -- sh -c \
   'curl -sS -H "PRIVATE-TOKEN: {{GITLAB_TOKEN}}" \
    "https://git.example.com/api/v4/projects" | jq .[].name'
 
+# Read a plain config value
+opaq reveal DEPLOY_HOST
+
 # JSON output for scripting
 opaq search ci --json
+```
+
+## Sensitivity Levels
+
+Every entry is either **secret** (🔒) or **plain** (📋).
+
+- **Secret** (default) — value is masked and scrubbed from all output. Use `opaq run` with `{{PLACEHOLDER}}` to inject it into commands.
+- **Plain** — value is readable via `opaq reveal`. Not masked in output. Use for non-sensitive config like URLs, hostnames, org names.
+
+Both types are encrypted at rest in the same store.
+
+```bash
+# Add a secret (default, or explicit)
+opaq add API_TOKEN "Production API token" --secret
+
+# Add a plain config value
+opaq add API_URL "Production API base URL" --plain
+
+# Read a plain value directly
+opaq reveal API_URL
+#   https://api.example.com
+
+# Secrets are refused by reveal
+opaq reveal API_TOKEN
+#   Error: 'API_TOKEN' is a secret entry. Use 'opaq run' to inject it into commands.
+```
+
+If you omit `--secret`/`--plain`, an interactive prompt lets you choose.
+
+## Location-Aware Scopes
+
+The same entry name can hold different values depending on your working directory.
+
+### Scope levels
+
+| Flag | Scope | Meaning |
+|------|-------|---------|
+| `--global` | Global (default) | Available everywhere |
+| `--user` | Home directory | Available under `~/` |
+| `--current` | Current directory | Available under the current working directory |
+
+If you omit the flag, an interactive prompt lets you choose (including a custom path option).
+
+### Resolution
+
+When multiple entries share a name, the **nearest ancestor wins**. A scope tied to `/home/eco/work/project` beats `~/` which beats global.
+
+```bash
+# Global default
+opaq add REGISTRY "Docker registry URL" --plain --global
+# Enter value: registry.docker.io
+
+# Project override
+cd ~/work/client-a
+opaq add REGISTRY "Docker registry URL" --plain --current
+# Enter value: registry.client-a.internal
+
+# From ~/work/client-a, the project scope wins
+opaq reveal REGISTRY
+#   registry.client-a.internal
+
+# From anywhere else, the global scope applies
+cd ~/personal
+opaq reveal REGISTRY
+#   registry.docker.io
+```
+
+### Inspecting scopes
+
+```bash
+# See all scopes for an entry and which one is active
+opaq shadows REGISTRY
+#   → 📋 [~/work/client-a/]  Docker registry URL    ← active from here
+#     📋 [global]             Docker registry URL
+
+# Find entries pointing to deleted directories
+opaq cleanup
 ```
 
 ## How It Works
@@ -214,10 +311,11 @@ Secrets are stored in a single encrypted file at `~/.config/opaq/store`, encrypt
 When you run `opaq run -- <command>`, opaq:
 
 1. Decrypts secrets in memory
-2. Replaces `{{PLACEHOLDER}}` tokens with actual values in the command arguments
-3. Spawns the child process
-4. Filters stdout and stderr in real time, replacing any secret value with `[MASKED]`
-5. Scrubs files written during execution, replacing secret values in text files and deleting binary files that contain matches
+2. Resolves `{{PLACEHOLDER}}` tokens using scope resolution (nearest-ancestor-wins from the current directory)
+3. Replaces placeholders with actual values in the command arguments
+4. Spawns the child process
+5. Filters stdout and stderr in real time, replacing any **secret** value with `[MASKED]` (plain values pass through unmasked)
+6. Scrubs files written during execution, replacing secret values in text files and deleting binary files that contain matches
 
 The output filter uses an [Aho-Corasick](https://en.wikipedia.org/wiki/Aho%E2%80%93Corasick_algorithm) multi-pattern automaton to catch secrets in all their forms: raw, URL-encoded, Base64-encoded, and shell-escaped.
 
@@ -231,6 +329,8 @@ opaq is designed to work with AI coding agents like [Claude Code](https://claude
 
 - **A skill** that teaches agents the search-then-run workflow
 - **Hook scripts** that block agents from accessing the store directly, prevent writing placeholders to files, and auto-wrap commands containing `{{SECRET}}` placeholders
+
+Agents can also use `opaq reveal` to read plain config values directly — no TTY required. Scope resolution is automatic based on the agent's working directory.
 
 ### Three enforcement layers
 
@@ -252,7 +352,8 @@ opaq setup --check  # Verify installation
 - The store file is encrypted at rest with age (ChaCha20-Poly1305)
 - Output filtering catches raw, URL-encoded, Base64, and shell-escaped variants
 - File scrubbing watches for secrets written to disk during command execution
-- Interactive commands (`add`, `edit`, `remove`, etc.) require a TTY — agents cannot run them
+- Interactive commands (`add`, `edit`, `remove`, `shadows`, `cleanup`) require a TTY — agents cannot run them
+- Plain entries are intentionally readable via `reveal` — they are for non-sensitive config, not credentials. Secret entries remain fully masked
 
 ## License
 

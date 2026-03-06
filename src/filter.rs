@@ -365,6 +365,43 @@ mod tests {
     }
 
     #[test]
+    fn plain_values_not_masked() {
+        // OutputFilter only receives sensitive secrets, not plain values.
+        // Plain values should pass through unmasked.
+        let sensitive_secret = b"super-secret-token".to_vec();
+        let plain_value = b"https://example.com".to_vec();
+
+        // Build filter with ONLY the sensitive secret (as the run command does)
+        let filter = OutputFilter::new(&[sensitive_secret]).unwrap();
+
+        // Input contains both the sensitive secret and the plain value
+        let input_data = b"url=https://example.com token=super-secret-token";
+        let mut input = Cursor::new(input_data);
+        let mut output = Vec::new();
+        filter.filter_stream(&mut input, &mut output).unwrap();
+
+        let result = String::from_utf8(output).unwrap();
+        // Sensitive secret should be masked
+        assert!(
+            result.contains("[MASKED]"),
+            "Sensitive secret should be masked, got: {}",
+            result
+        );
+        assert!(
+            !result.contains("super-secret-token"),
+            "Sensitive secret value must not appear in output"
+        );
+        // Plain value should pass through unmasked
+        assert!(
+            result.contains("https://example.com"),
+            "Plain value should pass through unmasked, got: {}",
+            result
+        );
+        // Verify the plain_value was never added to the filter
+        let _ = plain_value; // just to show we intentionally excluded it
+    }
+
+    #[test]
     fn generate_variants_has_all_types() {
         let variants = generate_variants(b"my-secret/token+1");
         assert!(variants.len() >= 5);

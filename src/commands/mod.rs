@@ -1,12 +1,15 @@
 pub mod add;
+pub mod cleanup;
 pub mod edit;
 pub mod export_cmd;
 pub mod import_cmd;
 pub mod init;
 pub mod lock;
 pub mod remove;
+pub mod reveal;
 pub mod run;
 pub mod search;
 pub mod setup;
+pub mod shadows;
 pub mod setup_claude;
 pub mod unlock;

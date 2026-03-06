@@ -33,6 +33,21 @@ pub enum Commands {
         description: String,
         /// Optional comma-separated tags
         tags: Option<String>,
+        /// Mark as secret (masked, default)
+        #[arg(long, conflicts_with = "plain")]
+        secret: bool,
+        /// Mark as plain (non-sensitive)
+        #[arg(long, conflicts_with = "secret")]
+        plain: bool,
+        /// Scope: global (available everywhere)
+        #[arg(long, conflicts_with_all = ["user", "current"])]
+        global: bool,
+        /// Scope: user home directory
+        #[arg(long, conflicts_with_all = ["global", "current"])]
+        user: bool,
+        /// Scope: current working directory
+        #[arg(long, conflicts_with_all = ["global", "user"])]
+        current: bool,
     },
 
     /// Modify an existing secret's metadata or value
@@ -63,6 +78,30 @@ pub enum Commands {
         /// Output in JSON format
         #[arg(long)]
         json: bool,
+        /// Show entries from all scopes, not just the current directory
+        #[arg(long)]
+        all_scopes: bool,
+    },
+
+    /// Reveal the value of a non-sensitive (plain) entry
+    Reveal {
+        /// Entry name
+        name: String,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+        /// Override scope resolution
+        #[arg(long)]
+        scope: Option<String>,
+    },
+
+    /// Find and remove entries scoped to directories that no longer exist
+    Cleanup,
+
+    /// Show all scopes for an entry name and which one is active
+    Shadows {
+        /// Entry name
+        name: String,
     },
 
     /// Execute command with {{SECRET}} placeholder injection
@@ -128,9 +167,14 @@ pub fn dispatch(cli: Cli) -> crate::error::Result<()> {
             name,
             description,
             tags,
+            secret,
+            plain,
+            global,
+            user,
+            current,
         } => {
             require_tty("add")?;
-            crate::commands::add::execute(name, description, tags)
+            crate::commands::add::execute(name, description, tags, secret, plain, global, user, current)
         }
         Commands::Edit {
             name,
@@ -145,9 +189,25 @@ pub fn dispatch(cli: Cli) -> crate::error::Result<()> {
             require_tty("remove")?;
             crate::commands::remove::execute(name)
         }
-        Commands::Search { query, json } => {
+        Commands::Search {
+            query,
+            json,
+            all_scopes,
+        } => {
             // No TTY check -- agent-safe
-            crate::commands::search::execute(query, json)
+            crate::commands::search::execute(query, json, all_scopes)
+        }
+        Commands::Reveal { name, json, scope } => {
+            // No TTY check -- agent-safe
+            crate::commands::reveal::execute(name, json, scope)
+        }
+        Commands::Cleanup => {
+            require_tty("cleanup")?;
+            crate::commands::cleanup::execute()
+        }
+        Commands::Shadows { name } => {
+            require_tty("shadows")?;
+            crate::commands::shadows::execute(name)
         }
         Commands::Run { command } => {
             // No TTY check -- agent-safe

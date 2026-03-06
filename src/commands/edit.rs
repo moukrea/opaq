@@ -2,6 +2,7 @@
 
 use chrono::Utc;
 
+use crate::commands::add::prompt_scope;
 use crate::error::{OpaqError, Result};
 use crate::model::normalize_tags;
 use crate::store;
@@ -40,7 +41,7 @@ pub fn execute(
         }
     } else {
         // Interactive menu (no flags provided)
-        let options = vec!["Edit description", "Edit tags", "Rotate value"];
+        let options = vec!["Edit description", "Edit tags", "Rotate value", "Sensitivity", "Scope"];
         let selection = inquire::Select::new("What would you like to edit?", options)
             .prompt()
             .map_err(|e| OpaqError::Io(std::io::Error::other(e.to_string())))?;
@@ -65,6 +66,31 @@ pub fn execute(
             "Rotate value" => {
                 let value = prompt_secret_value()?;
                 entry.value = value.into_bytes();
+            }
+            "Sensitivity" => {
+                let current_label = if entry.sensitive { "Secret" } else { "Plain" };
+                eprintln!("Current sensitivity: {}", current_label);
+
+                let toggle_label = if entry.sensitive {
+                    "Change to Plain?"
+                } else {
+                    "Change to Secret?"
+                };
+                let confirmed = inquire::Confirm::new(toggle_label)
+                    .with_default(false)
+                    .prompt()
+                    .map_err(|e| OpaqError::Io(std::io::Error::other(e.to_string())))?;
+
+                if confirmed {
+                    entry.sensitive = !entry.sensitive;
+                    entry.updated_at = Utc::now();
+                }
+            }
+            "Scope" => {
+                eprintln!("Current scope: {}", entry.scope);
+                let new_scope = prompt_scope()?;
+                entry.scope = new_scope;
+                entry.updated_at = Utc::now();
             }
             _ => unreachable!(),
         }

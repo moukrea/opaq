@@ -3,7 +3,7 @@
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher};
 
-use crate::model::SecretEntry;
+use crate::model::{Scope, SecretEntry};
 
 const NAME_WEIGHT: u32 = 3;
 const TAGS_WEIGHT: u32 = 3;
@@ -14,6 +14,8 @@ pub struct SearchResult {
     pub description: String,
     pub tags: Vec<String>,
     pub score: u32,
+    pub sensitive: bool,
+    pub scope: Scope,
 }
 
 pub fn fuzzy_search(query: &str, entries: &[SecretEntry]) -> Vec<SearchResult> {
@@ -57,6 +59,8 @@ pub fn fuzzy_search(query: &str, entries: &[SecretEntry]) -> Vec<SearchResult> {
                     description: entry.description.clone(),
                     tags: entry.tags.clone(),
                     score: total,
+                    sensitive: entry.sensitive,
+                    scope: entry.scope.clone(),
                 })
             } else {
                 None
@@ -78,6 +82,8 @@ mod tests {
             desc.to_string(),
             tags.iter().map(|s| s.to_string()).collect(),
             vec![],
+            true,
+            crate::model::Scope::Global,
         )
         .unwrap()
     }

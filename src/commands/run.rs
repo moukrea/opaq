@@ -30,16 +30,16 @@ pub fn execute(command: Vec<String>) -> Result<()> {
     // Step 1: Decrypt the store
     let entries = load_store()?;
 
-    // Step 2: Resolve placeholders
-    let resolved = resolve_placeholders(&command, &entries);
-
-    // Step 3: Build the output filter
-    let filter = Arc::new(OutputFilter::new(&resolved.injected_secrets)?);
-
-    // Step 4: Set up file scrubber
-    let extra_paths = parse_output_paths(&resolved.args);
+    // Step 2: Resolve placeholders (scope-aware)
     let cwd = std::env::current_dir()?;
-    let mut scrubber = FileScrubber::new(resolved.injected_secrets.clone(), &cwd, extra_paths)?;
+    let resolved = resolve_placeholders(&command, &entries, &cwd);
+
+    // Step 3: Build the output filter (sensitive secrets only)
+    let filter = Arc::new(OutputFilter::new(&resolved.sensitive_secrets)?);
+
+    // Step 4: Set up file scrubber (sensitive secrets only)
+    let extra_paths = parse_output_paths(&resolved.args);
+    let mut scrubber = FileScrubber::new(resolved.sensitive_secrets.clone(), &cwd, extra_paths)?;
 
     // Step 5: Spawn child process
     let mut child = Command::new(&resolved.args[0])
