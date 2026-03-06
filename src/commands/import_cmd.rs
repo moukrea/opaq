@@ -362,17 +362,15 @@ mod tests {
         use crate::store::deserialize_store;
 
         // Create V1 entries with known sensitive/scope values to verify they round-trip
-        let entries = vec![
-            SecretEntry::new(
-                "TOKEN_V1".to_string(),
-                "V1 token".to_string(),
-                vec!["ci".to_string()],
-                b"v1_value".to_vec(),
-                false, // non-sensitive
-                crate::model::Scope::Global,
-            )
-            .unwrap(),
-        ];
+        let entries = vec![SecretEntry::new(
+            "TOKEN_V1".to_string(),
+            "V1 token".to_string(),
+            vec!["ci".to_string()],
+            b"v1_value".to_vec(),
+            false, // non-sensitive
+            crate::model::Scope::Global,
+        )
+        .unwrap()];
 
         // Serialize as V1
         let v1_bytes = serialize_store(&entries).unwrap();

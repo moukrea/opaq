@@ -76,8 +76,9 @@ fn resolve_scope(global: bool, user: bool, current: bool) -> Result<Scope> {
     if global {
         Ok(Scope::Global)
     } else if user {
-        let home = dirs::home_dir()
-            .ok_or_else(|| OpaqError::Io(std::io::Error::other("Cannot determine home directory")))?;
+        let home = dirs::home_dir().ok_or_else(|| {
+            OpaqError::Io(std::io::Error::other("Cannot determine home directory"))
+        })?;
         let canon = std::fs::canonicalize(&home)?;
         Ok(Scope::Path(canon))
     } else if current {
@@ -107,8 +108,9 @@ pub fn prompt_scope() -> Result<Scope> {
     if selection.starts_with("Global") {
         Ok(Scope::Global)
     } else if selection.starts_with("User") {
-        let home = dirs::home_dir()
-            .ok_or_else(|| OpaqError::Io(std::io::Error::other("Cannot determine home directory")))?;
+        let home = dirs::home_dir().ok_or_else(|| {
+            OpaqError::Io(std::io::Error::other("Cannot determine home directory"))
+        })?;
         let canon = std::fs::canonicalize(&home)?;
         Ok(Scope::Path(canon))
     } else if selection.starts_with("Current") {
@@ -126,9 +128,8 @@ pub fn prompt_scope() -> Result<Scope> {
 
 fn validate_scope_path(path_str: &str) -> Result<Scope> {
     let path = PathBuf::from(path_str);
-    let meta = std::fs::metadata(&path).map_err(|_| {
-        OpaqError::InvalidScopePath(path_str.to_string())
-    })?;
+    let meta =
+        std::fs::metadata(&path).map_err(|_| OpaqError::InvalidScopePath(path_str.to_string()))?;
     if !meta.is_dir() {
         return Err(OpaqError::InvalidScopePath(path_str.to_string()));
     }

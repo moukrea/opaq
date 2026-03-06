@@ -709,19 +709,91 @@ fn encryption_roundtrip_with_binary_secret_values() {
 
 #[test]
 fn secret_name_validation_rejects_invalid_names() {
-    assert!(SecretEntry::new("lowercase".into(), "d".into(), vec![], vec![], true, opaq::model::Scope::Global).is_err());
-    assert!(SecretEntry::new("_LEADING".into(), "d".into(), vec![], vec![], true, opaq::model::Scope::Global).is_err());
-    assert!(SecretEntry::new("1DIGIT".into(), "d".into(), vec![], vec![], true, opaq::model::Scope::Global).is_err());
-    assert!(SecretEntry::new("HAS-DASH".into(), "d".into(), vec![], vec![], true, opaq::model::Scope::Global).is_err());
-    assert!(SecretEntry::new("".into(), "d".into(), vec![], vec![], true, opaq::model::Scope::Global).is_err());
+    assert!(SecretEntry::new(
+        "lowercase".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_err());
+    assert!(SecretEntry::new(
+        "_LEADING".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_err());
+    assert!(SecretEntry::new(
+        "1DIGIT".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_err());
+    assert!(SecretEntry::new(
+        "HAS-DASH".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_err());
+    assert!(SecretEntry::new(
+        "".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_err());
 }
 
 #[test]
 fn secret_name_validation_accepts_valid_names() {
-    assert!(SecretEntry::new("A".into(), "d".into(), vec![], vec![], true, opaq::model::Scope::Global).is_ok());
-    assert!(SecretEntry::new("MY_TOKEN".into(), "d".into(), vec![], vec![], true, opaq::model::Scope::Global).is_ok());
-    assert!(SecretEntry::new("ABC_123_DEF".into(), "d".into(), vec![], vec![], true, opaq::model::Scope::Global).is_ok());
-    assert!(SecretEntry::new("SONARQUBE_TOKEN".into(), "d".into(), vec![], vec![], true, opaq::model::Scope::Global).is_ok());
+    assert!(SecretEntry::new(
+        "A".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_ok());
+    assert!(SecretEntry::new(
+        "MY_TOKEN".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_ok());
+    assert!(SecretEntry::new(
+        "ABC_123_DEF".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_ok());
+    assert!(SecretEntry::new(
+        "SONARQUBE_TOKEN".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_ok());
 }
 
 #[test]
@@ -1256,11 +1328,7 @@ mod binary_tests {
         env.init_store();
         env.add_secret("SECRET_TOKEN", "A sensitive token", &[], b"super-secret");
 
-        let output = env
-            .cmd()
-            .args(["reveal", "SECRET_TOKEN"])
-            .output()
-            .unwrap();
+        let output = env.cmd().args(["reveal", "SECRET_TOKEN"]).output().unwrap();
 
         assert_eq!(
             output.status.code(),

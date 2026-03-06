@@ -26,7 +26,11 @@ pub fn execute() -> Result<()> {
     eprintln!("Found {} entries with stale scopes:", stale_indices.len());
     for &idx in &stale_indices {
         let entry = &entries[idx];
-        let icon = if entry.sensitive { "\u{1F512}" } else { "\u{1F4CB}" };
+        let icon = if entry.sensitive {
+            "\u{1F512}"
+        } else {
+            "\u{1F4CB}"
+        };
         eprintln!(
             "  {} {} [{}] \u{2014} {}",
             icon, entry.name, entry.scope, entry.description,

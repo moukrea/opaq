@@ -21,9 +21,7 @@ pub fn execute(name: String) -> Result<()> {
     let cwd = std::env::current_dir()?;
 
     // Find the active entry (highest specificity that contains cwd)
-    let active_idx = matches
-        .iter()
-        .position(|e| e.scope.contains(&cwd));
+    let active_idx = matches.iter().position(|e| e.scope.contains(&cwd));
 
     println!("Entries named '{}':", name);
 
@@ -37,7 +35,11 @@ pub fn execute(name: String) -> Result<()> {
     for (i, entry) in matches.iter().enumerate() {
         let is_active = active_idx == Some(i);
         let in_scope = entry.scope.contains(&cwd);
-        let icon = if entry.sensitive { "\u{1f512}" } else { "\u{1f4cb}" };
+        let icon = if entry.sensitive {
+            "\u{1f512}"
+        } else {
+            "\u{1f4cb}"
+        };
         let scope_str = format!("[{}]", entry.scope);
         let scope_padded = format!("{:<width$}", scope_str, width = max_scope_len);
 

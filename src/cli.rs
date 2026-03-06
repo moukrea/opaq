@@ -174,7 +174,16 @@ pub fn dispatch(cli: Cli) -> crate::error::Result<()> {
             current,
         } => {
             require_tty("add")?;
-            crate::commands::add::execute(name, description, tags, secret, plain, global, user, current)
+            crate::commands::add::execute(
+                name,
+                description,
+                tags,
+                secret,
+                plain,
+                global,
+                user,
+                current,
+            )
         }
         Commands::Edit {
             name,

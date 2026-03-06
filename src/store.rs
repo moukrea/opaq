@@ -265,17 +265,15 @@ mod tests {
     #[test]
     fn v1_version_byte_routing() {
         // Serialize with V1 format
-        let entries = vec![
-            SecretEntry::new(
-                "V1_TOKEN".to_string(),
-                "A V1 token".to_string(),
-                vec![],
-                b"v1_value".to_vec(),
-                false,
-                crate::model::Scope::Global,
-            )
-            .unwrap(),
-        ];
+        let entries = vec![SecretEntry::new(
+            "V1_TOKEN".to_string(),
+            "A V1 token".to_string(),
+            vec![],
+            b"v1_value".to_vec(),
+            false,
+            crate::model::Scope::Global,
+        )
+        .unwrap()];
         let serialized = serialize_store(&entries).unwrap();
 
         // First byte should be 0x01

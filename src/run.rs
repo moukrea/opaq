@@ -278,10 +278,7 @@ mod tests {
         let result = resolve_placeholders(&args, &store, &default_cwd());
         assert_eq!(result.args, vec!["secret_val", "https://example.com"]);
         assert_eq!(result.sensitive_secrets, vec![b"secret_val".to_vec()]);
-        assert_eq!(
-            result.plain_values,
-            vec![b"https://example.com".to_vec()]
-        );
+        assert_eq!(result.plain_values, vec![b"https://example.com".to_vec()]);
     }
 
     #[test]

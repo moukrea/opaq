@@ -50,7 +50,11 @@ fn disambiguate(
     eprintln!("Multiple entries named '{}':", name);
     for (i, &idx) in indices.iter().enumerate() {
         let entry = &entries[idx];
-        let icon = if entry.sensitive { "\u{1F512}" } else { "\u{1F4CB}" };
+        let icon = if entry.sensitive {
+            "\u{1F512}"
+        } else {
+            "\u{1F4CB}"
+        };
         eprintln!(
             "  {}. {} {} [{}] \u{2014} {}",
             i + 1,

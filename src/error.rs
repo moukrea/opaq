@@ -84,8 +84,11 @@ pub enum OpaqError {
 impl OpaqError {
     pub fn exit_code(&self) -> i32 {
         match self {
-            Self::InvalidName(_) | Self::TtyRequired(_) | Self::UnknownPlaceholder(_)
-                | Self::MutuallyExclusiveFlags(_) | Self::InvalidScopePath(_) => 2,
+            Self::InvalidName(_)
+            | Self::TtyRequired(_)
+            | Self::UnknownPlaceholder(_)
+            | Self::MutuallyExclusiveFlags(_)
+            | Self::InvalidScopePath(_) => 2,
             _ => 1,
         }
     }

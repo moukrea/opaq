@@ -20,9 +20,8 @@ pub fn execute(name: String, json: bool, scope_override: Option<String>) -> Resu
                 .filter(|e| e.scope == Scope::Global)
                 .collect()
         } else {
-            let canon = std::fs::canonicalize(scope_str).map_err(|_| {
-                OpaqError::InvalidScopePath(scope_str.clone())
-            })?;
+            let canon = std::fs::canonicalize(scope_str)
+                .map_err(|_| OpaqError::InvalidScopePath(scope_str.clone()))?;
             if !canon.is_dir() {
                 return Err(OpaqError::InvalidScopePath(scope_str.clone()));
             }

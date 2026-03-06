@@ -41,7 +41,13 @@ pub fn execute(
         }
     } else {
         // Interactive menu (no flags provided)
-        let options = vec!["Edit description", "Edit tags", "Rotate value", "Sensitivity", "Scope"];
+        let options = vec![
+            "Edit description",
+            "Edit tags",
+            "Rotate value",
+            "Sensitivity",
+            "Scope",
+        ];
         let selection = inquire::Select::new("What would you like to edit?", options)
             .prompt()
             .map_err(|e| OpaqError::Io(std::io::Error::other(e.to_string())))?;

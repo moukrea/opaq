@@ -10,6 +10,6 @@ pub mod reveal;
 pub mod run;
 pub mod search;
 pub mod setup;
-pub mod shadows;
 pub mod setup_claude;
+pub mod shadows;
 pub mod unlock;
