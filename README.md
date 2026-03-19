@@ -73,6 +73,7 @@ sudo tee /etc/yum.repos.d/moukrea.repo << 'EOF'
 name=moukrea Repository
 baseurl=https://moukrea.github.io/rpm-repo/
 gpgcheck=1
+repo_gpgcheck=1
 gpgkey=https://moukrea.github.io/rpm-repo/pubkey.gpg
 enabled=1
 EOF
