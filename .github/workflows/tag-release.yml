@@ -178,14 +178,15 @@ jobs:
           # Import GPG key (may already be imported from APT step)
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>/dev/null || true
 
-          # Install createrepo and rpm-sign
+          # Configure gpg-agent for non-interactive CI use
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent
+
+          # Install createrepo and rpm tools
           sudo apt-get update && sudo apt-get install -y createrepo-c rpm
 
-          # Configure RPM signing macros for non-interactive CI use
-          cat > ~/.rpmmacros << MACROS
-          %_gpg_name ${GPG_KEY_ID}
-          %__gpg_sign_cmd %{__gpg} gpg --batch --pinentry-mode loopback --no-armor %{?_gpg_digest_algo:--digest-algo %{_gpg_digest_algo}} --no-secmem-warning -u "%{_gpg_name}" -sbo %{__signature_filename} --digest-algo sha256 %{__plaintext_filename}
-          MACROS
+          # Configure RPM signing
+          echo "%_gpg_name ${GPG_KEY_ID}" > ~/.rpmmacros
 
           # Clone RPM repo
           git clone https://x-access-token:${GH_TOKEN}@github.com/moukrea/rpm-repo.git rpm-repo
@@ -199,6 +200,10 @@ jobs:
           # Sign individual RPM packages
           rpmsign --addsign x86_64/opaq-${VERSION}-linux-x86_64.rpm
           rpmsign --addsign aarch64/opaq-${VERSION}-linux-aarch64.rpm
+
+          # Verify signatures before publishing
+          rpm -K x86_64/opaq-${VERSION}-linux-x86_64.rpm
+          rpm -K aarch64/opaq-${VERSION}-linux-aarch64.rpm
 
           # Generate repo metadata
           createrepo_c --update .
