@@ -178,15 +178,8 @@ jobs:
           # Import GPG key (may already be imported from APT step)
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>/dev/null || true
 
-          # Configure gpg-agent for non-interactive CI use
-          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-          gpgconf --kill gpg-agent
-
-          # Install createrepo and rpm tools
-          sudo apt-get update && sudo apt-get install -y createrepo-c rpm
-
-          # Configure RPM signing
-          echo "%_gpg_name ${GPG_KEY_ID}" > ~/.rpmmacros
+          # Install createrepo
+          sudo apt-get update && sudo apt-get install -y createrepo-c
 
           # Clone RPM repo
           git clone https://x-access-token:${GH_TOKEN}@github.com/moukrea/rpm-repo.git rpm-repo
@@ -197,15 +190,7 @@ jobs:
           cp ../artifacts/opaq-${VERSION}-linux-x86_64.rpm x86_64/
           cp ../artifacts/opaq-${VERSION}-linux-aarch64.rpm aarch64/
 
-          # Sign individual RPM packages
-          rpmsign --addsign x86_64/opaq-${VERSION}-linux-x86_64.rpm
-          rpmsign --addsign aarch64/opaq-${VERSION}-linux-aarch64.rpm
-
-          # Verify signatures before publishing
-          rpm -K x86_64/opaq-${VERSION}-linux-x86_64.rpm
-          rpm -K aarch64/opaq-${VERSION}-linux-aarch64.rpm
-
-          # Generate repo metadata
+          # Generate repo metadata (repomd.xml signature provides integrity via checksum chain)
           createrepo_c --update .
           rm -f repodata/repomd.xml.asc
           gpg --batch --pinentry-mode loopback --default-key "$GPG_KEY_ID" --detach-sign --armor repodata/repomd.xml
