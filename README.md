@@ -67,12 +67,13 @@ sudo apt update && sudo apt install opaq
 ### Fedora / RHEL
 
 ```bash
-# Add repository
+# Import GPG key and add repository
+sudo rpm --import https://moukrea.github.io/rpm-repo/pubkey.gpg
 sudo tee /etc/yum.repos.d/moukrea.repo << 'EOF'
 [moukrea]
 name=moukrea Repository
 baseurl=https://moukrea.github.io/rpm-repo/
-gpgcheck=1
+gpgcheck=0
 repo_gpgcheck=1
 gpgkey=https://moukrea.github.io/rpm-repo/pubkey.gpg
 enabled=1
