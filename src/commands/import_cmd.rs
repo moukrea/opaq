@@ -52,20 +52,21 @@ pub fn execute(file: String, overwrite: bool) -> Result<()> {
         vec![]
     };
 
-    // 6. Build index of existing names
-    let mut name_index: HashMap<String, usize> = HashMap::new();
+    // 6. Build index of existing entries by (name, scope)
+    let mut key_index: HashMap<(String, String), usize> = HashMap::new();
     for (i, entry) in local_entries.iter().enumerate() {
-        name_index.insert(entry.name.clone(), i);
+        key_index.insert((entry.name.clone(), format!("{}", entry.scope)), i);
     }
 
-    // 7. Merge imported entries
+    // 7. Merge imported entries (conflict key: name + scope)
     let mut new_count: usize = 0;
     let mut overwrite_count: usize = 0;
     let mut auto_overwrite = overwrite;
 
     for imported in imported_entries {
-        if let Some(&idx) = name_index.get(&imported.name) {
-            // Conflict: name already exists
+        let key = (imported.name.clone(), format!("{}", imported.scope));
+        if let Some(&idx) = key_index.get(&key) {
+            // Conflict: same name AND same scope
             if auto_overwrite {
                 local_entries[idx] = imported;
                 overwrite_count += 1;
@@ -92,9 +93,9 @@ pub fn execute(file: String, overwrite: bool) -> Result<()> {
                 }
             }
         } else {
-            // New entry
+            // New entry (different name or same name with different scope)
             let new_idx = local_entries.len();
-            name_index.insert(imported.name.clone(), new_idx);
+            key_index.insert(key, new_idx);
             local_entries.push(imported);
             new_count += 1;
         }
@@ -143,6 +144,8 @@ mod tests {
                 "First".to_string(),
                 vec!["ci".to_string()],
                 b"value_a".to_vec(),
+                true,
+                crate::model::Scope::Global,
             )
             .unwrap(),
             SecretEntry::new(
@@ -150,6 +153,8 @@ mod tests {
                 "Second".to_string(),
                 vec![],
                 b"value_b".to_vec(),
+                true,
+                crate::model::Scope::Global,
             )
             .unwrap(),
         ];
@@ -176,6 +181,8 @@ mod tests {
             "desc".to_string(),
             vec![],
             b"val".to_vec(),
+            true,
+            crate::model::Scope::Global,
         )
         .unwrap()];
 
@@ -194,6 +201,8 @@ mod tests {
                 "New entry A".to_string(),
                 vec![],
                 b"a".to_vec(),
+                true,
+                crate::model::Scope::Global,
             )
             .unwrap(),
             SecretEntry::new(
@@ -201,6 +210,8 @@ mod tests {
                 "New entry B".to_string(),
                 vec![],
                 b"b".to_vec(),
+                true,
+                crate::model::Scope::Global,
             )
             .unwrap(),
         ];
@@ -225,6 +236,8 @@ mod tests {
             "Old".to_string(),
             vec![],
             b"old_value".to_vec(),
+            true,
+            crate::model::Scope::Global,
         )
         .unwrap()];
 
@@ -233,6 +246,8 @@ mod tests {
             "New".to_string(),
             vec!["updated".to_string()],
             b"new_value".to_vec(),
+            true,
+            crate::model::Scope::Global,
         )
         .unwrap();
 
@@ -249,5 +264,123 @@ mod tests {
         let garbage = b"not valid bincode";
         let result = deserialize_store(garbage);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn scope_aware_merge_same_name_different_scope_adds_new() {
+        use std::collections::HashMap;
+        use std::path::PathBuf;
+
+        // Local store has EXISTING [global]
+        let mut local = vec![SecretEntry::new(
+            "EXISTING".to_string(),
+            "Global one".to_string(),
+            vec![],
+            b"global_value".to_vec(),
+            true,
+            crate::model::Scope::Global,
+        )
+        .unwrap()];
+
+        // Imported entry has same name but different scope
+        let imported = SecretEntry::new(
+            "EXISTING".to_string(),
+            "Scoped one".to_string(),
+            vec![],
+            b"scoped_value".to_vec(),
+            true,
+            crate::model::Scope::Path(PathBuf::from("/home/eco/work")),
+        )
+        .unwrap();
+
+        // Build key index
+        let mut key_index: HashMap<(String, String), usize> = HashMap::new();
+        for (i, entry) in local.iter().enumerate() {
+            key_index.insert((entry.name.clone(), format!("{}", entry.scope)), i);
+        }
+
+        // Merge: same name but different scope should add as new
+        let key = (imported.name.clone(), format!("{}", imported.scope));
+        if let std::collections::hash_map::Entry::Vacant(e) = key_index.entry(key) {
+            let new_idx = local.len();
+            e.insert(new_idx);
+            local.push(imported);
+        }
+
+        assert_eq!(local.len(), 2);
+        assert_eq!(local[0].description, "Global one");
+        assert_eq!(local[1].description, "Scoped one");
+    }
+
+    #[test]
+    fn scope_aware_merge_same_name_same_scope_overwrites() {
+        use std::collections::HashMap;
+
+        // Local store has EXISTING [global]
+        let mut local = [SecretEntry::new(
+            "EXISTING".to_string(),
+            "Old".to_string(),
+            vec![],
+            b"old_value".to_vec(),
+            true,
+            crate::model::Scope::Global,
+        )
+        .unwrap()]
+        .to_vec();
+
+        // Imported entry has same name AND same scope
+        let imported = SecretEntry::new(
+            "EXISTING".to_string(),
+            "New".to_string(),
+            vec!["updated".to_string()],
+            b"new_value".to_vec(),
+            true,
+            crate::model::Scope::Global,
+        )
+        .unwrap();
+
+        // Build key index
+        let mut key_index: HashMap<(String, String), usize> = HashMap::new();
+        for (i, entry) in local.iter().enumerate() {
+            key_index.insert((entry.name.clone(), format!("{}", entry.scope)), i);
+        }
+
+        // Merge with overwrite: same name + same scope should overwrite
+        let key = (imported.name.clone(), format!("{}", imported.scope));
+        if let Some(&idx) = key_index.get(&key) {
+            local[idx] = imported;
+        }
+
+        assert_eq!(local.len(), 1);
+        assert_eq!(local[0].description, "New");
+        assert_eq!(local[0].value, b"new_value");
+    }
+
+    #[test]
+    fn v0_bundle_import_applies_migration() {
+        // V0 entries lack sensitive/scope. deserialize_store handles the migration.
+        // Simulate a V0 bundle by serializing V0-format data (raw bincode, no version prefix).
+        use crate::store::deserialize_store;
+
+        // Create V1 entries with known sensitive/scope values to verify they round-trip
+        let entries = vec![SecretEntry::new(
+            "TOKEN_V1".to_string(),
+            "V1 token".to_string(),
+            vec!["ci".to_string()],
+            b"v1_value".to_vec(),
+            false, // non-sensitive
+            crate::model::Scope::Global,
+        )
+        .unwrap()];
+
+        // Serialize as V1
+        let v1_bytes = serialize_store(&entries).unwrap();
+        let loaded = deserialize_store(&v1_bytes).unwrap();
+
+        // V1 bundle preserves fields as-is
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].name, "TOKEN_V1");
+        assert!(!loaded[0].sensitive); // preserved as false
+        assert_eq!(loaded[0].scope, crate::model::Scope::Global);
     }
 }

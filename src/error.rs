@@ -53,6 +53,22 @@ pub enum OpaqError {
     #[error("Unknown placeholder '{{{{{0}}}}}' is not a known opaq secret.")]
     UnknownPlaceholder(String),
 
+    // Mutually exclusive flags (exit code 2)
+    #[error("Error: {0} are mutually exclusive")]
+    MutuallyExclusiveFlags(String),
+
+    // Reveal on sensitive entry (exit code 1)
+    #[error("Error: '{0}' is a secret entry. Use 'opaq run' to inject it into commands.")]
+    RevealSensitive(String),
+
+    // Invalid scope path (exit code 2)
+    #[error("Error: '{0}' is not an existing directory")]
+    InvalidScopePath(String),
+
+    // Ambiguous entry — triggers interactive disambiguation, message unused
+    #[error("")]
+    AmbiguousEntry(String),
+
     // Filter errors
     #[error("Failed to build output filter: {0}")]
     FilterBuild(String),
@@ -68,7 +84,11 @@ pub enum OpaqError {
 impl OpaqError {
     pub fn exit_code(&self) -> i32 {
         match self {
-            Self::InvalidName(_) | Self::TtyRequired(_) | Self::UnknownPlaceholder(_) => 2,
+            Self::InvalidName(_)
+            | Self::TtyRequired(_)
+            | Self::UnknownPlaceholder(_)
+            | Self::MutuallyExclusiveFlags(_)
+            | Self::InvalidScopePath(_) => 2,
             _ => 1,
         }
     }

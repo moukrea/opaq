@@ -31,6 +31,8 @@ fn make_entry(name: &str, desc: &str, tags: &[&str], value: &[u8]) -> SecretEntr
         desc.to_string(),
         tags.iter().map(|s| s.to_string()).collect(),
         value.to_vec(),
+        true,
+        opaq::model::Scope::Global,
     )
     .unwrap()
 }
@@ -209,7 +211,8 @@ fn run_placeholder_resolution_full_workflow() {
         "Authorization: Bearer {{API_TOKEN}}".into(),
         "https://{{DB_HOST}}/api/v1".into(),
     ];
-    let resolved = resolve_placeholders(&args, &loaded);
+    let cwd = std::path::Path::new("/tmp");
+    let resolved = resolve_placeholders(&args, &loaded, cwd);
 
     assert_eq!(resolved.args[0], "curl");
     assert_eq!(resolved.args[1], "-H");
@@ -218,7 +221,7 @@ fn run_placeholder_resolution_full_workflow() {
         "Authorization: Bearer super-secret-value-12345"
     );
     assert_eq!(resolved.args[3], "https://db.internal.example.com/api/v1");
-    assert_eq!(resolved.injected_secrets.len(), 2);
+    assert_eq!(resolved.sensitive_secrets.len(), 2);
 }
 
 #[test]
@@ -281,10 +284,11 @@ fn run_unknown_placeholder_left_asis() {
     let entries = vec![make_entry("KNOWN", "Known secret", &[], b"value")];
 
     let args: Vec<String> = vec!["echo".into(), "{{KNOWN}} and {{UNKNOWN}}".into()];
-    let resolved = resolve_placeholders(&args, &entries);
+    let cwd = std::path::Path::new("/tmp");
+    let resolved = resolve_placeholders(&args, &entries, cwd);
 
     assert_eq!(resolved.args[1], "value and {{UNKNOWN}}");
-    assert_eq!(resolved.injected_secrets.len(), 1);
+    assert_eq!(resolved.sensitive_secrets.len(), 1);
 }
 
 #[test]
@@ -298,13 +302,14 @@ fn run_non_opaq_curly_patterns_pass_through() {
         "{{.}}".into(),
         "{{lowercase}}".into(),
     ];
-    let resolved = resolve_placeholders(&args, &entries);
+    let cwd = std::path::Path::new("/tmp");
+    let resolved = resolve_placeholders(&args, &entries, cwd);
 
     // None of these should be touched
     assert_eq!(resolved.args[2], "{{ .Values.image }}");
     assert_eq!(resolved.args[3], "{{.}}");
     assert_eq!(resolved.args[4], "{{lowercase}}");
-    assert!(resolved.injected_secrets.is_empty());
+    assert!(resolved.sensitive_secrets.is_empty());
 }
 
 // ---------------------------------------------------------------------------
@@ -561,13 +566,14 @@ fn full_workflow_init_add_search_run() {
         "Authorization: Bearer {{SONARQUBE_TOKEN}}".into(),
         "https://sonar.example.com/api/v1".into(),
     ];
-    let resolved = resolve_placeholders(&args, &entries);
+    let cwd = std::path::Path::new("/tmp");
+    let resolved = resolve_placeholders(&args, &entries, cwd);
     assert_eq!(resolved.args[2], "Authorization: Bearer sqp_a1b2c3d4e5f6");
-    assert_eq!(resolved.injected_secrets.len(), 1);
-    assert_eq!(resolved.injected_secrets[0], b"sqp_a1b2c3d4e5f6");
+    assert_eq!(resolved.sensitive_secrets.len(), 1);
+    assert_eq!(resolved.sensitive_secrets[0], b"sqp_a1b2c3d4e5f6");
 
     // Step 5: Verify output filter masks the resolved value
-    let filter = OutputFilter::new(&resolved.injected_secrets).unwrap();
+    let filter = OutputFilter::new(&resolved.sensitive_secrets).unwrap();
     let simulated_output = b"Response from sonar: sqp_a1b2c3d4e5f6 authenticated";
     let mut input = Cursor::new(simulated_output.as_slice());
     let mut output = Vec::new();
@@ -703,19 +709,91 @@ fn encryption_roundtrip_with_binary_secret_values() {
 
 #[test]
 fn secret_name_validation_rejects_invalid_names() {
-    assert!(SecretEntry::new("lowercase".into(), "d".into(), vec![], vec![]).is_err());
-    assert!(SecretEntry::new("_LEADING".into(), "d".into(), vec![], vec![]).is_err());
-    assert!(SecretEntry::new("1DIGIT".into(), "d".into(), vec![], vec![]).is_err());
-    assert!(SecretEntry::new("HAS-DASH".into(), "d".into(), vec![], vec![]).is_err());
-    assert!(SecretEntry::new("".into(), "d".into(), vec![], vec![]).is_err());
+    assert!(SecretEntry::new(
+        "lowercase".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_err());
+    assert!(SecretEntry::new(
+        "_LEADING".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_err());
+    assert!(SecretEntry::new(
+        "1DIGIT".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_err());
+    assert!(SecretEntry::new(
+        "HAS-DASH".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_err());
+    assert!(SecretEntry::new(
+        "".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_err());
 }
 
 #[test]
 fn secret_name_validation_accepts_valid_names() {
-    assert!(SecretEntry::new("A".into(), "d".into(), vec![], vec![]).is_ok());
-    assert!(SecretEntry::new("MY_TOKEN".into(), "d".into(), vec![], vec![]).is_ok());
-    assert!(SecretEntry::new("ABC_123_DEF".into(), "d".into(), vec![], vec![]).is_ok());
-    assert!(SecretEntry::new("SONARQUBE_TOKEN".into(), "d".into(), vec![], vec![]).is_ok());
+    assert!(SecretEntry::new(
+        "A".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_ok());
+    assert!(SecretEntry::new(
+        "MY_TOKEN".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_ok());
+    assert!(SecretEntry::new(
+        "ABC_123_DEF".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_ok());
+    assert!(SecretEntry::new(
+        "SONARQUBE_TOKEN".into(),
+        "d".into(),
+        vec![],
+        vec![],
+        true,
+        opaq::model::Scope::Global
+    )
+    .is_ok());
 }
 
 #[test]
@@ -786,6 +864,48 @@ mod binary_tests {
             fs::set_permissions(&store_path, fs::Permissions::from_mode(0o600)).unwrap();
         }
 
+        /// Add a secret with explicit sensitivity and scope (bypasses TTY/inquire).
+        fn add_secret_with_sensitivity(
+            &self,
+            name: &str,
+            description: &str,
+            tags: &[&str],
+            value: &[u8],
+            sensitive: bool,
+            scope: opaq::model::Scope,
+        ) {
+            use std::fs;
+            use std::os::unix::fs::PermissionsExt;
+
+            let key_path = self.store_dir.join("master.key");
+            let key_data = fs::read(&key_path).unwrap();
+            let key: [u8; 32] = key_data.try_into().unwrap();
+            let passphrase = opaq::crypto::key_to_passphrase(&key);
+
+            let store_path = self.store_dir.join("store");
+            let ciphertext = fs::read(&store_path).unwrap();
+            let plaintext = opaq::crypto::decrypt_blob(&ciphertext, &passphrase).unwrap();
+            let mut entries: Vec<opaq::model::SecretEntry> =
+                opaq::store::deserialize_store(&plaintext).unwrap();
+
+            let tag_strings: Vec<String> = tags.iter().map(|s| s.to_string()).collect();
+            let entry = opaq::model::SecretEntry::new(
+                name.to_string(),
+                description.to_string(),
+                tag_strings,
+                value.to_vec(),
+                sensitive,
+                scope,
+            )
+            .unwrap();
+            entries.push(entry);
+
+            let new_plaintext = opaq::store::serialize_store(&entries).unwrap();
+            let new_ciphertext = opaq::crypto::encrypt_blob(&new_plaintext, &passphrase).unwrap();
+            fs::write(&store_path, &new_ciphertext).unwrap();
+            fs::set_permissions(&store_path, fs::Permissions::from_mode(0o600)).unwrap();
+        }
+
         /// Add a secret to the store using library APIs (bypasses TTY/inquire).
         fn add_secret(&self, name: &str, description: &str, tags: &[&str], value: &[u8]) {
             use std::fs;
@@ -808,6 +928,8 @@ mod binary_tests {
                 description.to_string(),
                 tag_strings,
                 value.to_vec(),
+                true,
+                opaq::model::Scope::Global,
             )
             .unwrap();
             entries.push(entry);
@@ -1168,5 +1290,142 @@ mod binary_tests {
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(stdout.contains("[MASKED]"));
         assert!(!stdout.contains("value_a"));
+    }
+
+    // -- Reveal tests (binary-level) --
+
+    #[test]
+    fn binary_reveal_plain_succeeds() {
+        let env = TestEnv::new();
+        env.init_store();
+        env.add_secret_with_sensitivity(
+            "PLAIN_URL",
+            "A non-sensitive URL",
+            &[],
+            b"https://example.com",
+            false,
+            opaq::model::Scope::Global,
+        );
+
+        let output = env.cmd().args(["reveal", "PLAIN_URL"]).output().unwrap();
+
+        assert!(
+            output.status.success(),
+            "Reveal of plain entry should succeed (exit 0), stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert_eq!(
+            stdout, "https://example.com",
+            "Reveal should output the raw value"
+        );
+    }
+
+    #[test]
+    fn binary_reveal_secret_fails() {
+        let env = TestEnv::new();
+        env.init_store();
+        env.add_secret("SECRET_TOKEN", "A sensitive token", &[], b"super-secret");
+
+        let output = env.cmd().args(["reveal", "SECRET_TOKEN"]).output().unwrap();
+
+        assert_eq!(
+            output.status.code(),
+            Some(1),
+            "Reveal of sensitive entry should exit 1"
+        );
+
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("secret entry"),
+            "Error should mention it's a secret entry, got: {}",
+            stderr
+        );
+    }
+
+    #[test]
+    fn binary_reveal_json_plain_entry() {
+        let env = TestEnv::new();
+        env.init_store();
+        env.add_secret_with_sensitivity(
+            "PLAIN_ENTRY",
+            "A plain config value",
+            &[],
+            b"config-value-123",
+            false,
+            opaq::model::Scope::Global,
+        );
+
+        let output = env
+            .cmd()
+            .args(["reveal", "--json", "PLAIN_ENTRY"])
+            .output()
+            .unwrap();
+
+        assert!(
+            output.status.success(),
+            "Reveal --json of plain entry should succeed, stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let parsed: serde_json::Value = serde_json::from_str(&stdout)
+            .unwrap_or_else(|e| panic!("Should be valid JSON: {}\nOutput: {}", e, stdout));
+
+        assert_eq!(parsed["name"], "PLAIN_ENTRY");
+        assert_eq!(parsed["value"], "config-value-123");
+    }
+
+    // -- Mutually exclusive flag tests (binary-level) --
+
+    #[test]
+    fn binary_add_mutually_exclusive_sensitivity_flags() {
+        let env = TestEnv::new();
+        env.init_store();
+
+        let output = env
+            .cmd()
+            .args(["add", "--secret", "--plain", "TEST_NAME"])
+            .output()
+            .unwrap();
+
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "Conflicting --secret --plain should exit 2"
+        );
+
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("--secret") || stderr.contains("cannot be used with"),
+            "Error should mention the conflicting flags, got: {}",
+            stderr
+        );
+    }
+
+    #[test]
+    fn binary_add_mutually_exclusive_scope_flags() {
+        let env = TestEnv::new();
+        env.init_store();
+
+        let output = env
+            .cmd()
+            .args(["add", "--global", "--user", "TEST_NAME"])
+            .output()
+            .unwrap();
+
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "Conflicting --global --user should exit 2"
+        );
+
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("--global") || stderr.contains("cannot be used with"),
+            "Error should mention the conflicting flags, got: {}",
+            stderr
+        );
     }
 }

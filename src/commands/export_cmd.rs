@@ -70,6 +70,8 @@ mod tests {
                 "First token".to_string(),
                 vec!["ci".to_string()],
                 b"secret_a".to_vec(),
+                true,
+                crate::model::Scope::Global,
             )
             .unwrap(),
             SecretEntry::new(
@@ -77,6 +79,8 @@ mod tests {
                 "Second token".to_string(),
                 vec!["api".to_string()],
                 b"secret_b".to_vec(),
+                true,
+                crate::model::Scope::Global,
             )
             .unwrap(),
         ];
@@ -108,6 +112,8 @@ mod tests {
             "desc".to_string(),
             vec![],
             b"value".to_vec(),
+            true,
+            crate::model::Scope::Global,
         )
         .unwrap()];
 

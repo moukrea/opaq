@@ -7,16 +7,58 @@ use std::path::PathBuf;
 
 use tempfile::NamedTempFile;
 
+use chrono::{DateTime, Utc};
+use serde::Deserialize;
+
 use crate::crypto::key_to_passphrase;
 use crate::error::{OpaqError, Result};
-use crate::model::SecretEntry;
+use crate::model::{Scope, SecretEntry};
+
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(serde::Serialize))]
+struct SecretEntryV0 {
+    name: String,
+    description: String,
+    tags: Vec<String>,
+    value: Vec<u8>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+}
+
+impl From<SecretEntryV0> for SecretEntry {
+    fn from(old: SecretEntryV0) -> Self {
+        SecretEntry {
+            name: old.name,
+            description: old.description,
+            tags: old.tags,
+            value: old.value,
+            created_at: old.created_at,
+            updated_at: old.updated_at,
+            sensitive: true,
+            scope: Scope::Global,
+        }
+    }
+}
 
 pub fn serialize_store(entries: &[SecretEntry]) -> Result<Vec<u8>> {
-    bincode::serialize(entries).map_err(|e| OpaqError::Serialization(e.to_string()))
+    let mut out = vec![0x01u8];
+    let payload =
+        bincode::serialize(entries).map_err(|e| OpaqError::Serialization(e.to_string()))?;
+    out.extend(payload);
+    Ok(out)
 }
 
 pub fn deserialize_store(data: &[u8]) -> Result<Vec<SecretEntry>> {
-    bincode::deserialize(data).map_err(|e| OpaqError::Serialization(e.to_string()))
+    if data.is_empty() {
+        return Ok(Vec::new());
+    }
+    if data[0] == 0x01 {
+        bincode::deserialize(&data[1..]).map_err(|e| OpaqError::Serialization(e.to_string()))
+    } else {
+        let old_entries: Vec<SecretEntryV0> =
+            bincode::deserialize(data).map_err(|e| OpaqError::Serialization(e.to_string()))?;
+        Ok(old_entries.into_iter().map(SecretEntry::from).collect())
+    }
 }
 
 pub fn store_dir() -> PathBuf {
@@ -118,6 +160,8 @@ mod tests {
                 "First token".to_string(),
                 vec!["ci".to_string(), "api".to_string()],
                 b"secret_value_a".to_vec(),
+                true,
+                crate::model::Scope::Global,
             )
             .unwrap(),
             SecretEntry::new(
@@ -125,6 +169,8 @@ mod tests {
                 "Second token".to_string(),
                 vec!["registry".to_string()],
                 vec![0x00, 0x01, 0xFF, 0xFE],
+                true,
+                crate::model::Scope::Global,
             )
             .unwrap(),
         ];
@@ -158,6 +204,12 @@ mod tests {
     }
 
     #[test]
+    fn deserialize_empty_bytes_returns_empty_vec() {
+        let deserialized = deserialize_store(&[]).unwrap();
+        assert!(deserialized.is_empty());
+    }
+
+    #[test]
     fn deserialize_garbage_returns_error() {
         let garbage = b"this is not valid bincode data at all";
         let result = deserialize_store(garbage);
@@ -166,6 +218,72 @@ mod tests {
             OpaqError::Serialization(_) => {}
             other => panic!("Expected Serialization error, got: {:?}", other),
         }
+    }
+
+    #[test]
+    fn v0_to_v1_migration() {
+        // Serialize entries in V0 format (raw bincode, no version prefix)
+        // Use 2 entries so the bincode length prefix byte is 0x02, not 0x01
+        let now = chrono::Utc::now();
+        let v0_entries = vec![
+            SecretEntryV0 {
+                name: "OLD_TOKEN_A".to_string(),
+                description: "A legacy token".to_string(),
+                tags: vec!["ci".to_string()],
+                value: b"old_secret_a".to_vec(),
+                created_at: now,
+                updated_at: now,
+            },
+            SecretEntryV0 {
+                name: "OLD_TOKEN_B".to_string(),
+                description: "Another legacy token".to_string(),
+                tags: vec![],
+                value: b"old_secret_b".to_vec(),
+                created_at: now,
+                updated_at: now,
+            },
+        ];
+        let v0_bytes = bincode::serialize(&v0_entries).unwrap();
+
+        // First byte should not be 0x01 (V0 format uses bincode length prefix)
+        assert_ne!(v0_bytes[0], 0x01);
+
+        // Deserialize should migrate to V1
+        let migrated = deserialize_store(&v0_bytes).unwrap();
+        assert_eq!(migrated.len(), 2);
+        assert_eq!(migrated[0].name, "OLD_TOKEN_A");
+        assert_eq!(migrated[0].description, "A legacy token");
+        assert_eq!(migrated[0].tags, vec!["ci"]);
+        assert_eq!(migrated[0].value, b"old_secret_a");
+        assert!(migrated[0].sensitive);
+        assert_eq!(migrated[0].scope, crate::model::Scope::Global);
+        assert_eq!(migrated[1].name, "OLD_TOKEN_B");
+        assert!(migrated[1].sensitive);
+        assert_eq!(migrated[1].scope, crate::model::Scope::Global);
+    }
+
+    #[test]
+    fn v1_version_byte_routing() {
+        // Serialize with V1 format
+        let entries = vec![SecretEntry::new(
+            "V1_TOKEN".to_string(),
+            "A V1 token".to_string(),
+            vec![],
+            b"v1_value".to_vec(),
+            false,
+            crate::model::Scope::Global,
+        )
+        .unwrap()];
+        let serialized = serialize_store(&entries).unwrap();
+
+        // First byte should be 0x01
+        assert_eq!(serialized[0], 0x01);
+
+        // Deserialize should preserve V1 fields
+        let deserialized = deserialize_store(&serialized).unwrap();
+        assert_eq!(deserialized.len(), 1);
+        assert_eq!(deserialized[0].name, "V1_TOKEN");
+        assert!(!deserialized[0].sensitive);
     }
 
     #[test]
@@ -181,6 +299,8 @@ mod tests {
                 "A test secret".to_string(),
                 vec!["test".to_string()],
                 b"supersecretvalue".to_vec(),
+                true,
+                crate::model::Scope::Global,
             )
             .unwrap(),
             SecretEntry::new(
@@ -188,6 +308,8 @@ mod tests {
                 "Another token".to_string(),
                 vec!["api".to_string(), "ci".to_string()],
                 b"token123".to_vec(),
+                true,
+                crate::model::Scope::Global,
             )
             .unwrap(),
         ];
